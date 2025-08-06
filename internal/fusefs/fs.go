@@ -156,13 +156,14 @@ func Mount(mountPoint, cacheDir string) error {
 	return nil
 }
 
-// Watch monitors cache directory changes and logs new files.
-func Watch(cacheDir string) {
+// Watch monitors cache directory changes and replicates new or modified files
+// into the DFS. The watch runs until ctx is canceled.
+func Watch(ctx context.Context, cacheDir string) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Printf("watcher: %v", err)
-		return
+		return err
 	}
+	defer watcher.Close()
 	addDir := func(p string) {
 		if err := watcher.Add(p); err != nil {
 			log.Printf("watch add: %v", err)
@@ -176,19 +177,31 @@ func Watch(cacheDir string) {
 	})
 	for {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case ev, ok := <-watcher.Events:
 			if !ok {
-				return
+				return nil
 			}
-			if ev.Op&fsnotify.Create != 0 {
-				log.Printf("cache file created: %s", ev.Name)
-				if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-					addDir(ev.Name)
+			if ev.Op&(fsnotify.Create|fsnotify.Write) != 0 {
+				if fi, err := os.Stat(ev.Name); err == nil {
+					if fi.IsDir() {
+						addDir(ev.Name)
+					} else {
+						rel, err := filepath.Rel(cacheDir, ev.Name)
+						if err == nil {
+							if data, err := os.ReadFile(ev.Name); err == nil {
+								if err := dfs.PutFile(rel, data); err != nil {
+									log.Printf("put file: %v", err)
+								}
+							}
+						}
+					}
 				}
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				return
+				return nil
 			}
 			log.Printf("watcher error: %v", err)
 		}

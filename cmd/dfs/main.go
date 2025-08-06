@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
@@ -62,7 +63,11 @@ func main() {
 			log.Fatalf("mount: %v", err)
 		}
 	}()
-	go dfsfs.Watch("/mnt/hostfs")
+	go func() {
+		if err := dfsfs.Watch(context.Background(), "/mnt/hostfs"); err != nil {
+			log.Fatalf("watch: %v", err)
+		}
+	}()
 
 	lis, err := net.Listen("tcp", gAddr)
 	if err != nil {

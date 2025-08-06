@@ -34,3 +34,14 @@ func GetFile(path string) ([]byte, error) {
 	}
 	return data, nil
 }
+
+// PutFile stores the file contents for the given path through the active node.
+func PutFile(path string, data []byte) error {
+	nodeMu.RLock()
+	nd := n
+	nodeMu.RUnlock()
+	if nd == nil {
+		return errors.New("node not initialized")
+	}
+	return nd.Put(path, data)
+}
