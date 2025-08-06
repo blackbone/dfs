@@ -2,7 +2,6 @@ package store
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"testing"
@@ -21,31 +20,34 @@ func (m *memSink) Close() error  { return nil }
 
 func TestStoreApplyAndGet(t *testing.T) {
 	s := New()
-	cmd := Command{Op: OpPut, Key: S2B("foo"), Data: []byte("bar")}
-	b, err := json.Marshal(cmd)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	if res := s.Apply(&raft.Log{Data: b}); res != nil {
+	const (
+		key = "foo"
+		val = "bar"
+	)
+	cmd := Command{Op: OpPut, Key: S2B(key), Data: []byte(val)}
+	if res := s.Apply(&raft.Log{Data: cmd.MarshalBinary()}); res != nil {
 		t.Fatalf("apply put: %v", res)
 	}
-	v, ok := s.Get("foo")
-	if !ok || string(v) != "bar" {
-		t.Fatalf("expected bar, got %q ok=%v", v, ok)
+	v, ok := s.Get(key)
+	if !ok || string(v) != val {
+		t.Fatalf("expected %s, got %q ok=%v", val, v, ok)
 	}
-	cmd = Command{Op: OpDelete, Key: S2B("foo")}
-	b, _ = json.Marshal(cmd)
-	if res := s.Apply(&raft.Log{Data: b}); res != nil {
+	cmd = Command{Op: OpDelete, Key: S2B(key)}
+	if res := s.Apply(&raft.Log{Data: cmd.MarshalBinary()}); res != nil {
 		t.Fatalf("apply delete: %v", res)
 	}
-	if _, ok := s.Get("foo"); ok {
+	if _, ok := s.Get(key); ok {
 		t.Fatalf("expected key removed")
 	}
 }
 
 func TestStoreSnapshotRestore(t *testing.T) {
 	s := New()
-	b, _ := json.Marshal(Command{Op: OpPut, Key: S2B("foo"), Data: []byte("bar")})
+	const (
+		key = "foo"
+		val = "bar"
+	)
+	b := (&Command{Op: OpPut, Key: S2B(key), Data: []byte(val)}).MarshalBinary()
 	s.Apply(&raft.Log{Data: b})
 
 	snap, err := s.Snapshot()
@@ -60,9 +62,9 @@ func TestStoreSnapshotRestore(t *testing.T) {
 	if err := s2.Restore(io.NopCloser(bytes.NewReader(ms.Bytes()))); err != nil {
 		t.Fatalf("restore: %v", err)
 	}
-	v, ok := s2.Get("foo")
-	if !ok || string(v) != "bar" {
-		t.Fatalf("expected bar, got %q ok=%v", v, ok)
+	v, ok := s2.Get(key)
+	if !ok || string(v) != val {
+		t.Fatalf("expected %s, got %q ok=%v", val, v, ok)
 	}
 }
 
@@ -108,5 +110,34 @@ func TestSnapshotPersistError(t *testing.T) {
 	es = &errSink{failClose: true}
 	if err := snap.Persist(es); err == nil {
 		t.Fatalf("expected close error")
+	}
+}
+
+func TestStoreApplyEmptyKey(t *testing.T) {
+	s := New()
+	const emptyVal = "v"
+	cmd := &Command{Op: OpPut, Key: nil, Data: []byte(emptyVal)}
+	if res := s.Apply(&raft.Log{Data: cmd.MarshalBinary()}); res != nil {
+		t.Fatalf("apply: %v", res)
+	}
+	if v, ok := s.Get(""); !ok || string(v) != emptyVal {
+		t.Fatalf("unexpected value %q ok=%v", v, ok)
+	}
+}
+
+func TestStoreApplyLargeData(t *testing.T) {
+	s := New()
+	const (
+		bigKey = "big"
+		filler = 'a'
+	)
+	big := bytes.Repeat([]byte{filler}, 1<<20)
+	cmd := &Command{Op: OpPut, Key: S2B(bigKey), Data: big}
+	if res := s.Apply(&raft.Log{Data: cmd.MarshalBinary()}); res != nil {
+		t.Fatalf("apply: %v", res)
+	}
+	v, ok := s.Get(bigKey)
+	if !ok || len(v) != len(big) {
+		t.Fatalf("unexpected len %d ok=%v", len(v), ok)
 	}
 }

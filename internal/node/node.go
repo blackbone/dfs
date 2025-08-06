@@ -2,7 +2,6 @@
 package node
 
 import (
-	"encoding/json"
 	"net"
 	"os"
 	"strings"
@@ -71,10 +70,7 @@ func New(id, bind, dataDir, peers string) (*Node, error) {
 // Put replicates a key/value pair through Raft.
 func (n *Node) Put(key string, data []byte) error {
 	c := &store.Command{Op: store.OpPut, Key: store.S2B(key), Data: data}
-	b, err := json.Marshal(c)
-	if err != nil {
-		return err
-	}
+	b := c.MarshalBinary()
 	f := n.raft.Apply(b, 5*time.Second)
 	return f.Error()
 }

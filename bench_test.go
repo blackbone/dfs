@@ -37,16 +37,25 @@ func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string) (*n
 }
 
 // BenchmarkTwoNodes stores a value on one node and retrieves it from another.
+const (
+	raft1     = "127.0.0.1:12000"
+	raft2     = "127.0.0.1:12001"
+	grpc1     = "127.0.0.1:13000"
+	grpc2     = "127.0.0.1:13001"
+	dataVal   = "data"
+	keyPrefix = "bench-"
+)
+
 func BenchmarkTwoNodes(b *testing.B) {
 	dir1 := b.TempDir()
 	dir2 := b.TempDir()
 
-	_, stop1, err := startNode(b, "127.0.0.1:12000", "127.0.0.1:12000", "127.0.0.1:13000", "127.0.0.1:12001", dir1)
+	_, stop1, err := startNode(b, raft1, raft1, grpc1, raft2, dir1)
 	if err != nil {
 		b.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(b, "127.0.0.1:12001", "127.0.0.1:12001", "127.0.0.1:13001", "127.0.0.1:12000", dir2)
+	n2, stop2, err := startNode(b, raft2, raft2, grpc2, raft1, dir2)
 	if err != nil {
 		b.Fatalf("node2: %v", err)
 	}
@@ -55,14 +64,14 @@ func BenchmarkTwoNodes(b *testing.B) {
 	// Give the cluster time to elect a leader.
 	time.Sleep(2 * time.Second)
 
-	conn1, err := grpc.Dial("127.0.0.1:13000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn1, err := grpc.Dial(grpc1, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		b.Fatalf("dial1: %v", err)
 	}
 	defer conn1.Close()
 	client1 := pb.NewFileServiceClient(conn1)
 
-	conn2, err := grpc.Dial("127.0.0.1:13001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn2, err := grpc.Dial(grpc2, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		b.Fatalf("dial2: %v", err)
 	}
@@ -79,8 +88,8 @@ func BenchmarkTwoNodes(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		key := fmt.Sprintf("bench-%d", i)
-		if _, err := leader.Put(ctx, &pb.PutRequest{Key: key, Data: []byte("data")}); err != nil {
+		key := fmt.Sprintf("%s%d", keyPrefix, i)
+		if _, err := leader.Put(ctx, &pb.PutRequest{Key: key, Data: []byte(dataVal)}); err != nil {
 			b.Fatalf("put: %v", err)
 		}
 		// Allow time for the entry to be replicated and applied on the peer.
@@ -89,7 +98,7 @@ func BenchmarkTwoNodes(b *testing.B) {
 		if err != nil {
 			b.Fatalf("get: %v", err)
 		}
-		if string(resp.Data) != "data" {
+		if string(resp.Data) != dataVal {
 			b.Fatalf("unexpected data: %s", resp.Data)
 		}
 	}

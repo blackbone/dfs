@@ -3,7 +3,9 @@
 package store
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"sync"
 	"unsafe"
@@ -21,9 +23,52 @@ const (
 
 // Command represents a replicated state machine command.
 type Command struct {
-	Op   Op     `json:"op"`
-	Key  []byte `json:"key"`
-	Data []byte `json:"data,omitempty"`
+	Op   Op
+	Key  []byte
+	Data []byte
+}
+
+const (
+	opLen    = 1
+	lenSize  = 4
+	headerSz = opLen + 2*lenSize
+)
+
+// MarshalBinary encodes the command into a binary form:
+// |Op|KeyLen|DataLen|Key|Data| using little endian lengths.
+func (c *Command) MarshalBinary() []byte {
+	klen := len(c.Key)
+	dlen := len(c.Data)
+	b := make([]byte, headerSz+klen+dlen)
+	b[0] = byte(c.Op)
+	binary.LittleEndian.PutUint32(b[opLen:], uint32(klen))
+	copy(b[opLen+lenSize:], c.Key)
+	off := opLen + lenSize + klen
+	binary.LittleEndian.PutUint32(b[off:], uint32(dlen))
+	copy(b[off+lenSize:], c.Data)
+	return b
+}
+
+// UnmarshalBinary decodes a binary command produced by MarshalBinary.
+func (c *Command) UnmarshalBinary(b []byte) error {
+	if len(b) < headerSz {
+		return errors.New("short command")
+	}
+	c.Op = Op(b[0])
+	klen := int(binary.LittleEndian.Uint32(b[opLen:]))
+	off := opLen + lenSize
+	if len(b) < off+klen+lenSize {
+		return errors.New("short command")
+	}
+	c.Key = b[off : off+klen]
+	off += klen
+	dlen := int(binary.LittleEndian.Uint32(b[off:]))
+	off += lenSize
+	if len(b) < off+dlen {
+		return errors.New("short command")
+	}
+	c.Data = b[off : off+dlen]
+	return nil
 }
 
 // S2B converts a string to a byte slice without allocation.
@@ -45,7 +90,7 @@ func New() *Store {
 // Apply applies a Raft log entry to the key/value store.
 func (s *Store) Apply(log *raft.Log) interface{} {
 	var c Command
-	if err := json.Unmarshal(log.Data, &c); err != nil {
+	if err := c.UnmarshalBinary(log.Data); err != nil {
 		return err
 	}
 	key := B2S(c.Key)
