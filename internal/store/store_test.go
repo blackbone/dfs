@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"testing"
 
@@ -62,5 +63,50 @@ func TestStoreSnapshotRestore(t *testing.T) {
 	v, ok := s2.Get("foo")
 	if !ok || string(v) != "bar" {
 		t.Fatalf("expected bar, got %q ok=%v", v, ok)
+	}
+}
+
+func TestStoreRestoreInvalidData(t *testing.T) {
+	s := New()
+	if err := s.Restore(io.NopCloser(bytes.NewBufferString("bad"))); err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+type errSink struct {
+	failWrite bool
+	failClose bool
+	canceled  bool
+}
+
+func (e *errSink) Write(p []byte) (int, error) {
+	if e.failWrite {
+		return 0, errors.New("write")
+	}
+	return len(p), nil
+}
+
+func (e *errSink) ID() string    { return "err" }
+func (e *errSink) Cancel() error { e.canceled = true; return nil }
+func (e *errSink) Close() error {
+	if e.failClose {
+		return errors.New("close")
+	}
+	return nil
+}
+
+func TestSnapshotPersistError(t *testing.T) {
+	s := New()
+	snap, err := s.Snapshot()
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	es := &errSink{failWrite: true}
+	if err := snap.Persist(es); err == nil || !es.canceled {
+		t.Fatalf("expected write error and cancel")
+	}
+	es = &errSink{failClose: true}
+	if err := snap.Persist(es); err == nil {
+		t.Fatalf("expected close error")
 	}
 }
