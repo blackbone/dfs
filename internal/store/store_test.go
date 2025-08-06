@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/raft"
@@ -108,5 +109,16 @@ func TestSnapshotPersistError(t *testing.T) {
 	es = &errSink{failClose: true}
 	if err := snap.Persist(es); err == nil {
 		t.Fatalf("expected close error")
+	}
+}
+
+func TestStringByteConversion(t *testing.T) {
+	sizes := []int{0, 1, 1 << 16}
+	for _, n := range sizes {
+		s := strings.Repeat(string(rune(97)), n)
+		b := S2B(s)
+		if got := B2S(b); got != s {
+			t.Fatalf("mismatch size=%d", n)
+		}
 	}
 }

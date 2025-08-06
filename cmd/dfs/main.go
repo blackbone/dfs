@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"dfs"
+	"dfs/internal/config"
 	dfsfs "dfs/internal/fusefs"
 	"dfs/internal/node"
 	obs "dfs/internal/observability"
@@ -30,18 +30,12 @@ func withDefaultPort(addr string, defaultPort int) string {
 }
 
 func main() {
-	id := flag.String("id", "node1", "node ID")
-	raftAddr := flag.String("raft", "", "raft bind address")
-	grpcAddr := flag.String("grpc", "", "gRPC bind address")
-	dataDir := flag.String("data", "data", "data directory")
-	peers := flag.String("peers", "", "comma separated peer raft addresses")
-	flag.Parse()
-
 	const (
 		defaultRaftPort = 12000
 		defaultGRPCPort = 13000
 		metricsAddr     = ":2112"
 
+		msgConfig = "config"
 		msgNode   = "node"
 		msgMount  = "mount"
 		msgWatch  = "watch"
@@ -51,18 +45,23 @@ func main() {
 		msgMetric = "metrics_listen"
 	)
 
-	rAddr := withDefaultPort(*raftAddr, defaultRaftPort)
-	gAddr := withDefaultPort(*grpcAddr, defaultGRPCPort)
+	cfg, err := config.Load("")
+	if err != nil {
+		obs.Logger.Fatal().Err(err).Msg(msgConfig)
+	}
+
+	rAddr := withDefaultPort(cfg.Raft, defaultRaftPort)
+	gAddr := withDefaultPort(cfg.GRPC, defaultGRPCPort)
 	peerStr := ""
-	if *peers != "" {
+	if len(cfg.Peers) > 0 {
 		var ps []string
-		for _, p := range strings.Split(*peers, ",") {
+		for _, p := range cfg.Peers {
 			ps = append(ps, withDefaultPort(p, defaultRaftPort))
 		}
 		peerStr = strings.Join(ps, ",")
 	}
 
-	n, err := node.New(*id, rAddr, *dataDir, peerStr)
+	n, err := node.New(cfg.ID, rAddr, cfg.Data, peerStr)
 	if err != nil {
 		obs.Logger.Fatal().Err(err).Msg(msgNode)
 	}

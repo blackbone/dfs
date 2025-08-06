@@ -22,6 +22,28 @@ const (
 	msgWatcherError = "watcher_error"
 )
 
+var (
+	mountFn   = fuse.Mount
+	serveFn   = bazilfs.Serve
+	putFileFn = dfs.PutFile
+	watchFn   = func() (watcher, error) {
+		w, err := fsnotify.NewWatcher()
+		return &fsWatcher{Watcher: w}, err
+	}
+)
+
+type watcher interface {
+	Add(string) error
+	Close() error
+	Events() <-chan fsnotify.Event
+	Errors() <-chan error
+}
+
+type fsWatcher struct{ *fsnotify.Watcher }
+
+func (w *fsWatcher) Events() <-chan fsnotify.Event { return w.Watcher.Events }
+func (w *fsWatcher) Errors() <-chan error          { return w.Watcher.Errors }
+
 // FS implements a simple read-only FUSE filesystem backed by a cache
 // directory and the DFS for missing files.
 type FS struct {
@@ -152,13 +174,13 @@ func Mount(mountPoint, cacheDir string) error {
 		return err
 	}
 	fs := New(cacheDir)
-	c, err := fuse.Mount(mountPoint, fuse.AllowOther())
+	c, err := mountFn(mountPoint, fuse.AllowOther())
 	if err != nil {
 		return err
 	}
 	go func() {
-		if err := bazilfs.Serve(c, fs); err != nil {
-			obs.Logger.Fatal().Err(err).Msg(msgServe)
+		if err := serveFn(c, fs); err != nil {
+			obs.Logger.Error().Err(err).Msg(msgServe)
 		}
 	}()
 	return nil
@@ -167,7 +189,7 @@ func Mount(mountPoint, cacheDir string) error {
 // Watch monitors cache directory changes and replicates new or modified files
 // into the DFS. The watch runs until ctx is canceled.
 func Watch(ctx context.Context, cacheDir string) error {
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := watchFn()
 	if err != nil {
 		return err
 	}
@@ -187,7 +209,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case ev, ok := <-watcher.Events:
+		case ev, ok := <-watcher.Events():
 			if !ok {
 				return nil
 			}
@@ -199,7 +221,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 						rel, err := filepath.Rel(cacheDir, ev.Name)
 						if err == nil {
 							if data, err := os.ReadFile(ev.Name); err == nil {
-								if err := dfs.PutFile(rel, data); err != nil {
+								if err := putFileFn(rel, data); err != nil {
 									obs.Logger.Error().Err(err).Msg(msgPutFile)
 								}
 							}
@@ -207,7 +229,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 					}
 				}
 			}
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-watcher.Errors():
 			if !ok {
 				return nil
 			}
