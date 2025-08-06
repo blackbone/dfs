@@ -30,7 +30,8 @@ func startGRPC(t *testing.T, n *node.Node) (pb.FileServiceClient, func()) {
 	pb.RegisterFileServiceServer(srv, New(n))
 	go srv.Serve(lis)
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "buf", grpc.WithContextDialer(dialer(lis)), grpc.WithInsecure())
+        //lint:ignore SA1019 grpc dialcontext with insecure transport used for in-memory testing
+        conn, err := grpc.DialContext(ctx, "buf", grpc.WithContextDialer(dialer(lis)), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

@@ -55,14 +55,16 @@ func BenchmarkTwoNodes(b *testing.B) {
 	// Give the cluster time to elect a leader.
 	time.Sleep(2 * time.Second)
 
-	conn1, err := grpc.Dial("127.0.0.1:13000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+        //lint:ignore SA1019 grpc dial is deprecated but retained for backward compatibility
+        conn1, err := grpc.Dial("127.0.0.1:13000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		b.Fatalf("dial1: %v", err)
 	}
 	defer conn1.Close()
 	client1 := pb.NewFileServiceClient(conn1)
 
-	conn2, err := grpc.Dial("127.0.0.1:13001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+        //lint:ignore SA1019 grpc dial is deprecated but retained for backward compatibility
+        conn2, err := grpc.Dial("127.0.0.1:13001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		b.Fatalf("dial2: %v", err)
 	}
