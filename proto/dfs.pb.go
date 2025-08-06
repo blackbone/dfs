@@ -365,6 +365,162 @@ func (*RemovePeerResponse) Descriptor() ([]byte, []int) {
 	return file_proto_dfs_proto_rawDescGZIP(), []int{7}
 }
 
+type Metadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Version       uint64                 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	Hash          []byte                 `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
+	Replicas      []uint64               `protobuf:"varint,4,rep,packed,name=replicas,proto3" json:"replicas,omitempty"`
+	Deleted       bool                   `protobuf:"varint,5,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Metadata) Reset() {
+	*x = Metadata{}
+	mi := &file_proto_dfs_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Metadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Metadata) ProtoMessage() {}
+
+func (x *Metadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
+func (*Metadata) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Metadata) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *Metadata) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *Metadata) GetHash() []byte {
+	if x != nil {
+		return x.Hash
+	}
+	return nil
+}
+
+func (x *Metadata) GetReplicas() []uint64 {
+	if x != nil {
+		return x.Replicas
+	}
+	return nil
+}
+
+func (x *Metadata) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
+}
+
+type SyncMetadataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *Metadata              `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncMetadataRequest) Reset() {
+	*x = SyncMetadataRequest{}
+	mi := &file_proto_dfs_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncMetadataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncMetadataRequest) ProtoMessage() {}
+
+func (x *SyncMetadataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncMetadataRequest.ProtoReflect.Descriptor instead.
+func (*SyncMetadataRequest) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SyncMetadataRequest) GetMeta() *Metadata {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+type SyncMetadataResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncMetadataResponse) Reset() {
+	*x = SyncMetadataResponse{}
+	mi := &file_proto_dfs_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncMetadataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncMetadataResponse) ProtoMessage() {}
+
+func (x *SyncMetadataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncMetadataResponse.ProtoReflect.Descriptor instead.
+func (*SyncMetadataResponse) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{10}
+}
+
 var File_proto_dfs_proto protoreflect.FileDescriptor
 
 const file_proto_dfs_proto_rawDesc = "" +
@@ -386,13 +542,23 @@ const file_proto_dfs_proto_rawDesc = "" +
 	"\x0fAddPeerResponse\"#\n" +
 	"\x11RemovePeerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x14\n" +
-	"\x12RemovePeerResponse2\xd6\x01\n" +
+	"\x12RemovePeerResponse\"\x82\x01\n" +
+	"\bMetadata\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\x12\x12\n" +
+	"\x04hash\x18\x03 \x01(\fR\x04hash\x12\x1a\n" +
+	"\breplicas\x18\x04 \x03(\x04R\breplicas\x12\x18\n" +
+	"\adeleted\x18\x05 \x01(\bR\adeleted\"8\n" +
+	"\x13SyncMetadataRequest\x12!\n" +
+	"\x04meta\x18\x01 \x01(\v2\r.dfs.MetadataR\x04meta\"\x16\n" +
+	"\x14SyncMetadataResponse2\x9b\x02\n" +
 	"\vFileService\x12(\n" +
 	"\x03Put\x12\x0f.dfs.PutRequest\x1a\x10.dfs.PutResponse\x12(\n" +
 	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponse\x124\n" +
 	"\aAddPeer\x12\x13.dfs.AddPeerRequest\x1a\x14.dfs.AddPeerResponse\x12=\n" +
 	"\n" +
-	"RemovePeer\x12\x16.dfs.RemovePeerRequest\x1a\x17.dfs.RemovePeerResponseB\tZ\a./protob\x06proto3"
+	"RemovePeer\x12\x16.dfs.RemovePeerRequest\x1a\x17.dfs.RemovePeerResponse\x12C\n" +
+	"\fSyncMetadata\x12\x18.dfs.SyncMetadataRequest\x1a\x19.dfs.SyncMetadataResponseB\tZ\a./protob\x06proto3"
 
 var (
 	file_proto_dfs_proto_rawDescOnce sync.Once
@@ -406,31 +572,37 @@ func file_proto_dfs_proto_rawDescGZIP() []byte {
 	return file_proto_dfs_proto_rawDescData
 }
 
-var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_dfs_proto_goTypes = []any{
-	(*PutRequest)(nil),         // 0: dfs.PutRequest
-	(*PutResponse)(nil),        // 1: dfs.PutResponse
-	(*GetRequest)(nil),         // 2: dfs.GetRequest
-	(*GetResponse)(nil),        // 3: dfs.GetResponse
-	(*AddPeerRequest)(nil),     // 4: dfs.AddPeerRequest
-	(*AddPeerResponse)(nil),    // 5: dfs.AddPeerResponse
-	(*RemovePeerRequest)(nil),  // 6: dfs.RemovePeerRequest
-	(*RemovePeerResponse)(nil), // 7: dfs.RemovePeerResponse
+	(*PutRequest)(nil),           // 0: dfs.PutRequest
+	(*PutResponse)(nil),          // 1: dfs.PutResponse
+	(*GetRequest)(nil),           // 2: dfs.GetRequest
+	(*GetResponse)(nil),          // 3: dfs.GetResponse
+	(*AddPeerRequest)(nil),       // 4: dfs.AddPeerRequest
+	(*AddPeerResponse)(nil),      // 5: dfs.AddPeerResponse
+	(*RemovePeerRequest)(nil),    // 6: dfs.RemovePeerRequest
+	(*RemovePeerResponse)(nil),   // 7: dfs.RemovePeerResponse
+	(*Metadata)(nil),             // 8: dfs.Metadata
+	(*SyncMetadataRequest)(nil),  // 9: dfs.SyncMetadataRequest
+	(*SyncMetadataResponse)(nil), // 10: dfs.SyncMetadataResponse
 }
 var file_proto_dfs_proto_depIdxs = []int32{
-	0, // 0: dfs.FileService.Put:input_type -> dfs.PutRequest
-	2, // 1: dfs.FileService.Get:input_type -> dfs.GetRequest
-	4, // 2: dfs.FileService.AddPeer:input_type -> dfs.AddPeerRequest
-	6, // 3: dfs.FileService.RemovePeer:input_type -> dfs.RemovePeerRequest
-	1, // 4: dfs.FileService.Put:output_type -> dfs.PutResponse
-	3, // 5: dfs.FileService.Get:output_type -> dfs.GetResponse
-	5, // 6: dfs.FileService.AddPeer:output_type -> dfs.AddPeerResponse
-	7, // 7: dfs.FileService.RemovePeer:output_type -> dfs.RemovePeerResponse
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	8,  // 0: dfs.SyncMetadataRequest.meta:type_name -> dfs.Metadata
+	0,  // 1: dfs.FileService.Put:input_type -> dfs.PutRequest
+	2,  // 2: dfs.FileService.Get:input_type -> dfs.GetRequest
+	4,  // 3: dfs.FileService.AddPeer:input_type -> dfs.AddPeerRequest
+	6,  // 4: dfs.FileService.RemovePeer:input_type -> dfs.RemovePeerRequest
+	9,  // 5: dfs.FileService.SyncMetadata:input_type -> dfs.SyncMetadataRequest
+	1,  // 6: dfs.FileService.Put:output_type -> dfs.PutResponse
+	3,  // 7: dfs.FileService.Get:output_type -> dfs.GetResponse
+	5,  // 8: dfs.FileService.AddPeer:output_type -> dfs.AddPeerResponse
+	7,  // 9: dfs.FileService.RemovePeer:output_type -> dfs.RemovePeerResponse
+	10, // 10: dfs.FileService.SyncMetadata:output_type -> dfs.SyncMetadataResponse
+	6,  // [6:11] is the sub-list for method output_type
+	1,  // [1:6] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_dfs_proto_init() }
@@ -444,7 +616,7 @@ func file_proto_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_dfs_proto_rawDesc), len(file_proto_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

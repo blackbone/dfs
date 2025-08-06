@@ -7,6 +7,7 @@ service FileService {
   rpc Get(GetRequest) returns (GetResponse);
   rpc AddPeer(AddPeerRequest) returns (AddPeerResponse);
   rpc RemovePeer(RemovePeerRequest) returns (RemovePeerResponse);
+  rpc SyncMetadata(SyncMetadataRequest) returns (SyncMetadataResponse);
 }
 
 message PutRequest {
@@ -30,3 +31,15 @@ message AddPeerResponse {}
 message RemovePeerRequest { string id = 1; }
 
 message RemovePeerResponse {}
+
+message Metadata {
+  string path = 1;
+  uint64 version = 2;
+  bytes hash = 3;
+  repeated uint64 replicas = 4;
+  bool deleted = 5;
+}
+
+message SyncMetadataRequest { Metadata meta = 1; }
+
+message SyncMetadataResponse {}

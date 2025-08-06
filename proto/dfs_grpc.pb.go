@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FileService_Put_FullMethodName        = "/dfs.FileService/Put"
-	FileService_Get_FullMethodName        = "/dfs.FileService/Get"
-	FileService_AddPeer_FullMethodName    = "/dfs.FileService/AddPeer"
-	FileService_RemovePeer_FullMethodName = "/dfs.FileService/RemovePeer"
+	FileService_Put_FullMethodName          = "/dfs.FileService/Put"
+	FileService_Get_FullMethodName          = "/dfs.FileService/Get"
+	FileService_AddPeer_FullMethodName      = "/dfs.FileService/AddPeer"
+	FileService_RemovePeer_FullMethodName   = "/dfs.FileService/RemovePeer"
+	FileService_SyncMetadata_FullMethodName = "/dfs.FileService/SyncMetadata"
 )
 
 // FileServiceClient is the client API for FileService service.
@@ -33,6 +34,7 @@ type FileServiceClient interface {
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
 	AddPeer(ctx context.Context, in *AddPeerRequest, opts ...grpc.CallOption) (*AddPeerResponse, error)
 	RemovePeer(ctx context.Context, in *RemovePeerRequest, opts ...grpc.CallOption) (*RemovePeerResponse, error)
+	SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataResponse, error)
 }
 
 type fileServiceClient struct {
@@ -83,6 +85,16 @@ func (c *fileServiceClient) RemovePeer(ctx context.Context, in *RemovePeerReques
 	return out, nil
 }
 
+func (c *fileServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SyncMetadataResponse)
+	err := c.cc.Invoke(ctx, FileService_SyncMetadata_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FileServiceServer is the server API for FileService service.
 // All implementations must embed UnimplementedFileServiceServer
 // for forward compatibility.
@@ -91,6 +103,7 @@ type FileServiceServer interface {
 	Get(context.Context, *GetRequest) (*GetResponse, error)
 	AddPeer(context.Context, *AddPeerRequest) (*AddPeerResponse, error)
 	RemovePeer(context.Context, *RemovePeerRequest) (*RemovePeerResponse, error)
+	SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataResponse, error)
 	mustEmbedUnimplementedFileServiceServer()
 }
 
@@ -112,6 +125,9 @@ func (UnimplementedFileServiceServer) AddPeer(context.Context, *AddPeerRequest) 
 }
 func (UnimplementedFileServiceServer) RemovePeer(context.Context, *RemovePeerRequest) (*RemovePeerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePeer not implemented")
+}
+func (UnimplementedFileServiceServer) SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SyncMetadata not implemented")
 }
 func (UnimplementedFileServiceServer) mustEmbedUnimplementedFileServiceServer() {}
 func (UnimplementedFileServiceServer) testEmbeddedByValue()                     {}
@@ -206,6 +222,24 @@ func _FileService_RemovePeer_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FileService_SyncMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileServiceServer).SyncMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileService_SyncMetadata_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileServiceServer).SyncMetadata(ctx, req.(*SyncMetadataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FileService_ServiceDesc is the grpc.ServiceDesc for FileService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +262,10 @@ var FileService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemovePeer",
 			Handler:    _FileService_RemovePeer_Handler,
+		},
+		{
+			MethodName: "SyncMetadata",
+			Handler:    _FileService_SyncMetadata_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
