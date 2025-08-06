@@ -13,6 +13,7 @@ const (
 	KeyGRPC  = "grpc"
 	KeyData  = "data"
 	KeyPeers = "peers"
+	KeyJoin  = "join"
 
 	EnvPrefix = "DFS"
 	EnvConfig = "DFS_CONFIG"
@@ -21,6 +22,7 @@ const (
 	EnvGRPC   = "DFS_GRPC"
 	EnvData   = "DFS_DATA"
 	EnvPeers  = "DFS_PEERS"
+	EnvJoin   = "DFS_JOIN"
 
 	DefaultID         = "node1"
 	DefaultDataDir    = "data"
@@ -34,6 +36,7 @@ type Config struct {
 	GRPC  string   `mapstructure:"grpc"`
 	Data  string   `mapstructure:"data"`
 	Peers []string `mapstructure:"peers"`
+	Join  bool     `mapstructure:"join"`
 }
 
 func Load(path string) (Config, error) {
@@ -42,6 +45,7 @@ func Load(path string) (Config, error) {
 
 	v.SetDefault(KeyID, DefaultID)
 	v.SetDefault(KeyData, DefaultDataDir)
+	v.SetDefault(KeyJoin, false)
 
 	v.SetEnvPrefix(EnvPrefix)
 	v.AutomaticEnv()

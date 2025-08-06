@@ -5,6 +5,8 @@ option go_package = "./proto";
 service FileService {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Get(GetRequest) returns (GetResponse);
+  rpc AddPeer(AddPeerRequest) returns (AddPeerResponse);
+  rpc RemovePeer(RemovePeerRequest) returns (RemovePeerResponse);
 }
 
 message PutRequest {
@@ -14,10 +16,17 @@ message PutRequest {
 
 message PutResponse {}
 
-message GetRequest {
-  string key = 1;
+message GetRequest { string key = 1; }
+
+message GetResponse { bytes data = 1; }
+
+message AddPeerRequest {
+  string id = 1;
+  string address = 2;
 }
 
-message GetResponse {
-  bytes data = 1;
-}
+message AddPeerResponse {}
+
+message RemovePeerRequest { string id = 1; }
+
+message RemovePeerResponse {}

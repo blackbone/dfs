@@ -13,6 +13,15 @@ import (
 	"dfs/internal/store"
 )
 
+const (
+	networkTCP   = "tcp"
+	sepComma     = ","
+	emptyString  = ""
+	maxPool      = 3
+	dialTimeout  = 10 * time.Second
+	applyTimeout = 5 * time.Second
+)
+
 // Node wraps a Raft instance and its finite state machine store.
 type Node struct {
 	raft  *raft.Raft
@@ -21,17 +30,19 @@ type Node struct {
 
 // New creates a new Raft node bound to the given address. The peers
 // argument is a comma separated list of other Raft server addresses
-// that form the initial cluster configuration.
-func New(id, bind, dataDir, peers string) (*Node, error) {
+// that form the initial cluster configuration. If bootstrap is false
+// the node starts unbootstrapped and must be added to the cluster via
+// AddPeer.
+func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	cfg := raft.DefaultConfig()
 	cfg.LocalID = raft.ServerID(id)
 
-	addr, err := net.ResolveTCPAddr("tcp", bind)
+	addr, err := net.ResolveTCPAddr(networkTCP, bind)
 	if err != nil {
 		return nil, err
 	}
 	// Each node communicates with others over a TCP transport.
-	transport, err := raft.NewTCPTransport(bind, addr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(bind, addr, maxPool, dialTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -51,19 +62,20 @@ func New(id, bind, dataDir, peers string) (*Node, error) {
 
 	n := &Node{raft: r, Store: fsm}
 
-	// Bootstrap cluster by configuring the known peers plus this node.
-	configuration := raft.Configuration{}
-	for _, p := range strings.Split(peers, ",") {
-		if p == "" {
-			continue
+	if bootstrap {
+		configuration := raft.Configuration{}
+		for _, p := range strings.Split(peers, sepComma) {
+			if p == emptyString {
+				continue
+			}
+			configuration.Servers = append(configuration.Servers, raft.Server{
+				ID:      raft.ServerID(p),
+				Address: raft.ServerAddress(p),
+			})
 		}
-		configuration.Servers = append(configuration.Servers, raft.Server{
-			ID:      raft.ServerID(p),
-			Address: raft.ServerAddress(p),
-		})
+		configuration.Servers = append(configuration.Servers, raft.Server{ID: cfg.LocalID, Address: transport.LocalAddr()})
+		r.BootstrapCluster(configuration)
 	}
-	configuration.Servers = append(configuration.Servers, raft.Server{ID: cfg.LocalID, Address: transport.LocalAddr()})
-	r.BootstrapCluster(configuration)
 
 	return n, nil
 }
@@ -75,7 +87,7 @@ func (n *Node) Put(key string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	f := n.raft.Apply(b, 5*time.Second)
+	f := n.raft.Apply(b, applyTimeout)
 	return f.Error()
 }
 
@@ -89,3 +101,16 @@ func (n *Node) IsLeader() bool { return n.raft.State() == raft.Leader }
 
 // Leader returns the leader address.
 func (n *Node) Leader() raft.ServerAddress { return n.raft.Leader() }
+
+// AddPeer adds a voting peer to the cluster. Only the leader can
+// perform membership changes.
+func (n *Node) AddPeer(id, addr string) error {
+	f := n.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(addr), 0, 0)
+	return f.Error()
+}
+
+// RemovePeer removes a peer from the cluster.
+func (n *Node) RemovePeer(id string) error {
+	f := n.raft.RemoveServer(raft.ServerID(id), 0, 0)
+	return f.Error()
+}

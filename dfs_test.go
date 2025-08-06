@@ -57,7 +57,7 @@ func TestPutFileNoNode(t *testing.T) {
 
 func TestSetNodeAndFileOps(t *testing.T) {
 	addr := freePort(t)
-	n, err := node.New(sampleID, addr, t.TempDir(), emptyString)
+	n, err := node.New(sampleID, addr, t.TempDir(), emptyString, true)
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}
