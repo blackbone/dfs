@@ -3,6 +3,9 @@
 This example shows how to run a three node cluster using Docker Compose and
 interact with it using [`grpcurl`](https://github.com/fullstorydev/grpcurl).
 
+The `dfs` binary defaults to Raft port `12000` and gRPC port `13000`, so
+addresses in the compose file include ports only for clarity.
+
 ## Start the cluster
 
 ```sh
@@ -10,8 +13,8 @@ docker compose up --build
 ```
 
 Each node exposes a gRPC API on ports `13001`, `13002` and `13003` on the host.
-After the cluster elects a leader, you can issue requests against the leader's
-port.
+After the cluster elects a leader, `Put` requests must target the leader's
+port. `Get` requests may be sent to any node.
 
 ## Store a value
 
