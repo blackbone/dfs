@@ -31,3 +31,14 @@ grpcurl -plaintext -d '{"key":"foo"}' localhost:13001 dfs.FileService/Get
 
 The `data` field is base64 encoded. The responses will confirm the value has
 been stored and retrieved through the distributed system.
+
+## Access via FUSE
+
+Each node exposes the replicated data as a read-only filesystem mounted at
+`/mnt/dfs` and backed by a writable cache at `/mnt/hostfs`. Writing a file to
+the cache replicates it to the cluster and makes it visible under the mount.
+
+```sh
+echo "hello" > /mnt/hostfs/greeting.txt
+cat /mnt/dfs/greeting.txt
+```

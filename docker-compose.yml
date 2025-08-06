@@ -2,7 +2,12 @@ version: '3.8'
 services:
   node1:
     build: .
-    command: ["-id","node1","-raft","node1:12000","-grpc",":13000","-data","/data","-peers","node2:12001,node3:12002"]
+    environment:
+      - DFS_ID=node1
+      - DFS_RAFT=node1:12000
+      - DFS_GRPC=:13000
+      - DFS_DATA=/data
+      - DFS_PEERS=node2:12001,node3:12002
     networks:
       dfsnet:
         aliases: [node1]
@@ -12,7 +17,12 @@ services:
       - "13001:13000"
   node2:
     build: .
-    command: ["-id","node2","-raft","node2:12001","-grpc",":13000","-data","/data","-peers","node1:12000,node3:12002"]
+    environment:
+      - DFS_ID=node2
+      - DFS_RAFT=node2:12001
+      - DFS_GRPC=:13000
+      - DFS_DATA=/data
+      - DFS_PEERS=node1:12000,node3:12002
     networks:
       dfsnet:
         aliases: [node2]
@@ -22,7 +32,12 @@ services:
       - "13002:13000"
   node3:
     build: .
-    command: ["-id","node3","-raft","node3:12002","-grpc",":13000","-data","/data","-peers","node1:12000,node2:12001"]
+    environment:
+      - DFS_ID=node3
+      - DFS_RAFT=node3:12002
+      - DFS_GRPC=:13000
+      - DFS_DATA=/data
+      - DFS_PEERS=node1:12000,node2:12001
     networks:
       dfsnet:
         aliases: [node3]

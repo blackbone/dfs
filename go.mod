@@ -8,6 +8,7 @@ require (
 	bazil.org/fuse v0.0.0-20230120002735-62a210ff1fd5
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/hashicorp/raft v1.7.3
+	github.com/spf13/viper v1.20.1
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
