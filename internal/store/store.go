@@ -3,12 +3,13 @@
 package store
 
 import (
-        "encoding/json"
-        "io"
-        "os"
-        "sync"
+	"encoding/json"
+	"io"
+	"os"
+	"sync"
+	"unsafe"
 
-        "github.com/hashicorp/raft"
+	"github.com/hashicorp/raft"
 )
 
 // Op represents a store operation.
@@ -26,16 +27,20 @@ type Command struct {
 	Data []byte `json:"data,omitempty"`
 }
 
-// S2B converts a string to a byte slice.
-func S2B(s string) []byte { return []byte(s) }
+// S2B converts a string to a byte slice without allocation.
+func S2B(s string) []byte {
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}
 
-// B2S converts a byte slice to a string.
-func B2S(b []byte) string { return string(b) }
+// B2S converts a byte slice to a string without allocation.
+func B2S(b []byte) string {
+	return unsafe.String(unsafe.SliceData(b), len(b))
+}
 
 // Store is a simple in-memory key/value store implementing raft.FSM.
 type Store struct {
-        mu   sync.RWMutex
-        data map[string][]byte
+	mu   sync.RWMutex
+	data map[string][]byte
 }
 
 func New() *Store {
@@ -63,9 +68,9 @@ func (s *Store) Apply(log *raft.Log) interface{} {
 }
 
 const (
-        flagRO       = os.O_RDONLY
-        flagCreateTr = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-        permUserRW   = 0o600
+	flagRO       = os.O_RDONLY
+	flagCreateTr = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	permUserRW   = 0o600
 )
 
 // Snapshot returns a snapshot of the store.
@@ -94,41 +99,41 @@ func (s *Store) Restore(rc io.ReadCloser) error {
 
 // Backup writes the current state to w.
 func (s *Store) Backup(w io.Writer) error {
-        s.mu.RLock()
-        defer s.mu.RUnlock()
-        return json.NewEncoder(w).Encode(s.data)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return json.NewEncoder(w).Encode(s.data)
 }
 
 // BackupFile writes the current state to the given file path.
 func (s *Store) BackupFile(path string) error {
-        f, err := os.OpenFile(path, flagCreateTr, permUserRW)
-        if err != nil {
-                return err
-        }
-        defer f.Close()
-        return s.Backup(f)
+	f, err := os.OpenFile(path, flagCreateTr, permUserRW)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return s.Backup(f)
 }
 
 // RestoreBackup loads state from r.
 func (s *Store) RestoreBackup(r io.Reader) error {
-        data := make(map[string][]byte)
-        if err := json.NewDecoder(r).Decode(&data); err != nil {
-                return err
-        }
-        s.mu.Lock()
-        s.data = data
-        s.mu.Unlock()
-        return nil
+	data := make(map[string][]byte)
+	if err := json.NewDecoder(r).Decode(&data); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.data = data
+	s.mu.Unlock()
+	return nil
 }
 
 // RestoreBackupFile loads state from the given file path.
 func (s *Store) RestoreBackupFile(path string) error {
-        f, err := os.OpenFile(path, flagRO, permUserRW)
-        if err != nil {
-                return err
-        }
-        defer f.Close()
-        return s.RestoreBackup(f)
+	f, err := os.OpenFile(path, flagRO, permUserRW)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return s.RestoreBackup(f)
 }
 
 // Get returns value for key.
