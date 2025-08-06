@@ -13,15 +13,17 @@ go build ./cmd/dfs
 
 ## Running
 
-Each process hosts a single node. Raft traffic defaults to port `12000`
-and the gRPC API to `13000`, so they can be omitted from the flags.
+Each process hosts a single node. Configuration is read from a file named
+`dfs.yaml` in the working directory or from environment variables prefixed
+with `DFS_`. Raft traffic defaults to port `12000` and the gRPC API to
+`13000`.
 
 ```sh
 # start first node
-./dfs -id node1
+DFS_ID=node1 ./dfs
 
 # start second node and join the first
-./dfs -id node2 -peers node1
+DFS_ID=node2 DFS_PEERS=node1 ./dfs
 ```
 
 Once a leader is elected you can store and retrieve data using any gRPC
@@ -58,7 +60,7 @@ replicated into the DFS and become visible under the mount. See
 
 The project is intentionally small:
 
-* `cmd/dfs` contains the entry point and flag parsing.
+* `cmd/dfs` contains the entry point and configuration loading.
 * `internal/node` wraps a Raft instance.
 * `internal/store` implements the replicated key/value state machine.
 * `internal/server` exposes the gRPC `FileService` backed by the store.
