@@ -45,7 +45,7 @@ func waitLeader(nodes ...*Node) *Node {
 }
 
 func TestNewInvalidAddress(t *testing.T) {
-	_, err := New("n1", "127.0.0.1:bad", t.TempDir(), "")
+	_, err := New("n1", "127.0.0.1:bad", t.TempDir(), "", true)
 	if err == nil {
 		t.Fatalf("expected error for bad address")
 	}
@@ -53,7 +53,7 @@ func TestNewInvalidAddress(t *testing.T) {
 
 func TestNodePutGetSingleNode(t *testing.T) {
 	addr := getFreePort(t)
-	n, err := New("n1", addr, t.TempDir(), "")
+	n, err := New("n1", addr, t.TempDir(), "", true)
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}
@@ -76,12 +76,12 @@ func TestNodePutGetSingleNode(t *testing.T) {
 func TestNodeReplicationAndFollowerPut(t *testing.T) {
 	addr1 := getFreePort(t)
 	addr2 := getFreePort(t)
-	n1, err := New(addr1, addr1, t.TempDir(), addr2)
+	n1, err := New(addr1, addr1, t.TempDir(), addr2, true)
 	if err != nil {
 		t.Fatalf("new n1: %v", err)
 	}
 	defer n1.raft.Shutdown()
-	n2, err := New(addr2, addr2, t.TempDir(), addr1)
+	n2, err := New(addr2, addr2, t.TempDir(), addr1, true)
 	if err != nil {
 		t.Fatalf("new n2: %v", err)
 	}
@@ -121,14 +121,14 @@ func TestNewSnapshotDirIsFile(t *testing.T) {
 	}
 	f.Close()
 	addr := getFreePort(t)
-	if _, err := New(idA, addr, f.Name(), empty); err == nil {
+	if _, err := New(idA, addr, f.Name(), empty, true); err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestLeader(t *testing.T) {
 	addr := getFreePort(t)
-	n, err := New(idA, addr, t.TempDir(), empty)
+	n, err := New(idA, addr, t.TempDir(), empty, true)
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}
@@ -138,5 +138,83 @@ func TestLeader(t *testing.T) {
 	}
 	if n.Leader() == raft.ServerAddress(empty) {
 		t.Fatalf("empty leader")
+	}
+}
+
+func TestAddRemovePeer(t *testing.T) {
+	addr1 := getFreePort(t)
+	n1, err := New(idA, addr1, t.TempDir(), empty, true)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	defer n1.raft.Shutdown()
+
+	addr2 := getFreePort(t)
+	n2, err := New(idB, addr2, t.TempDir(), empty, false)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	defer n2.raft.Shutdown()
+
+	if waitLeader(n1) != n1 {
+		t.Fatalf("n1 not leader")
+	}
+	if err := n1.AddPeer(idB, addr2); err != nil {
+		t.Fatalf("add peer: %v", err)
+	}
+
+	deadline := time.Now().Add(time.Duration(timeout) * time.Second)
+	for time.Now().Before(deadline) {
+		if n2.Leader() != raft.ServerAddress(empty) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err := n1.Put("k1", []byte("v1")); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	deadline = time.Now().Add(time.Duration(timeout) * time.Second)
+	for time.Now().Before(deadline) {
+		if v, ok := n2.Get("k1"); ok && string(v) == "v1" {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err := n1.RemovePeer(idB); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if err := n1.Put("k2", []byte("v2")); err != nil {
+		t.Fatalf("put2: %v", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if _, ok := n2.Get("k2"); ok {
+		t.Fatalf("expected no replication after removal")
+	}
+}
+
+func TestAddPeerNotLeader(t *testing.T) {
+	addr1 := getFreePort(t)
+	addr2 := getFreePort(t)
+	n1, err := New(addr1, addr1, t.TempDir(), addr2, true)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	defer n1.raft.Shutdown()
+	n2, err := New(addr2, addr2, t.TempDir(), addr1, true)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	defer n2.raft.Shutdown()
+	leader := waitLeader(n1, n2)
+	if leader == nil {
+		t.Fatalf("no leader")
+	}
+	follower := n2
+	if leader == n2 {
+		follower = n1
+	}
+	if err := follower.AddPeer("x", "127.0.0.1:9999"); err == nil {
+		t.Fatalf("expected error from follower")
 	}
 }

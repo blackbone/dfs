@@ -17,9 +17,9 @@ import (
 )
 
 // startNode is a helper to create a node and its gRPC server for tests.
-func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string) (*node.Node, func(), error) {
+func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
 	tb.Helper()
-	n, err := node.New(id, raftAddr, dataDir, peers)
+	n, err := node.New(id, raftAddr, dataDir, peers, bootstrap)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -41,12 +41,12 @@ func TestWatchReplicatesFile(t *testing.T) {
 	dir1 := t.TempDir()
 	dir2 := t.TempDir()
 
-	n1, stop1, err := startNode(t, "127.0.0.1:12010", "127.0.0.1:12010", "127.0.0.1:13010", "127.0.0.1:12011", dir1)
+	n1, stop1, err := startNode(t, "127.0.0.1:12010", "127.0.0.1:12010", "127.0.0.1:13010", "127.0.0.1:12011", dir1, true)
 	if err != nil {
 		t.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(t, "127.0.0.1:12011", "127.0.0.1:12011", "127.0.0.1:13011", "127.0.0.1:12010", dir2)
+	n2, stop2, err := startNode(t, "127.0.0.1:12011", "127.0.0.1:12011", "127.0.0.1:13011", "127.0.0.1:12010", dir2, true)
 	if err != nil {
 		t.Fatalf("node2: %v", err)
 	}

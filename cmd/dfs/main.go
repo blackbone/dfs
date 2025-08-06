@@ -49,7 +49,7 @@ func main() {
 		peerStr = strings.Join(ps, ",")
 	}
 
-	n, err := node.New(cfg.ID, rAddr, cfg.Data, peerStr)
+	n, err := node.New(cfg.ID, rAddr, cfg.Data, peerStr, !cfg.Join)
 	if err != nil {
 		log.Fatalf("node: %v", err)
 	}

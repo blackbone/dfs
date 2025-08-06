@@ -16,9 +16,9 @@ import (
 )
 
 // startNode creates a node and gRPC server listening on the given addresses.
-func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string) (*node.Node, func(), error) {
+func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
 	tb.Helper()
-	n, err := node.New(id, raftAddr, dataDir, peers)
+	n, err := node.New(id, raftAddr, dataDir, peers, bootstrap)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -41,12 +41,12 @@ func BenchmarkTwoNodes(b *testing.B) {
 	dir1 := b.TempDir()
 	dir2 := b.TempDir()
 
-	_, stop1, err := startNode(b, "127.0.0.1:12000", "127.0.0.1:12000", "127.0.0.1:13000", "127.0.0.1:12001", dir1)
+	_, stop1, err := startNode(b, "127.0.0.1:12000", "127.0.0.1:12000", "127.0.0.1:13000", "127.0.0.1:12001", dir1, true)
 	if err != nil {
 		b.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(b, "127.0.0.1:12001", "127.0.0.1:12001", "127.0.0.1:13001", "127.0.0.1:12000", dir2)
+	n2, stop2, err := startNode(b, "127.0.0.1:12001", "127.0.0.1:12001", "127.0.0.1:13001", "127.0.0.1:12000", dir2, true)
 	if err != nil {
 		b.Fatalf("node2: %v", err)
 	}
@@ -92,5 +92,32 @@ func BenchmarkTwoNodes(b *testing.B) {
 		if string(resp.Data) != "data" {
 			b.Fatalf("unexpected data: %s", resp.Data)
 		}
+	}
+}
+
+func BenchmarkAddRemovePeer(b *testing.B) {
+	addr1 := "127.0.0.1:15000"
+	n1, err := node.New("leader", addr1, b.TempDir(), "", true)
+	if err != nil {
+		b.Fatalf("leader: %v", err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for !n1.IsLeader() && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	for i := 0; i < b.N; i++ {
+		addr2 := fmt.Sprintf("127.0.0.1:%d", 15001+i)
+		id := fmt.Sprintf("n%d", i)
+		n2, err := node.New(id, addr2, b.TempDir(), "", false)
+		if err != nil {
+			b.Fatalf("new: %v", err)
+		}
+		if err := n1.AddPeer(id, addr2); err != nil {
+			b.Fatalf("add: %v", err)
+		}
+		if err := n1.RemovePeer(id); err != nil {
+			b.Fatalf("remove: %v", err)
+		}
+		_ = n2
 	}
 }

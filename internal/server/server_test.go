@@ -15,7 +15,12 @@ import (
 	pb "dfs/proto"
 )
 
-const bufSize = 1024 * 1024
+const (
+	bufSize = 1024 * 1024
+	idA     = "n1"
+	idB     = "n2"
+	empty   = ""
+)
 
 func dialer(l *bufconn.Listener) func(context.Context, string) (net.Conn, error) {
 	return func(ctx context.Context, s string) (net.Conn, error) {
@@ -69,7 +74,7 @@ func freeAddr(t *testing.T) string {
 
 func TestServerPutGet(t *testing.T) {
 	addr := freeAddr(t)
-	n, err := node.New("n1", addr, t.TempDir(), "")
+	n, err := node.New("n1", addr, t.TempDir(), "", true)
 	if err != nil {
 		t.Fatalf("new node: %v", err)
 	}
@@ -95,11 +100,11 @@ func TestServerPutGet(t *testing.T) {
 func TestServerPutNotLeader(t *testing.T) {
 	addr1 := freeAddr(t)
 	addr2 := freeAddr(t)
-	n1, err := node.New(addr1, addr1, t.TempDir(), addr2)
+	n1, err := node.New(addr1, addr1, t.TempDir(), addr2, true)
 	if err != nil {
 		t.Fatalf("n1: %v", err)
 	}
-	n2, err := node.New(addr2, addr2, t.TempDir(), addr1)
+	n2, err := node.New(addr2, addr2, t.TempDir(), addr1, true)
 	if err != nil {
 		t.Fatalf("n2: %v", err)
 	}
@@ -119,5 +124,32 @@ func TestServerPutNotLeader(t *testing.T) {
 	ctx := context.Background()
 	if _, err := client.Put(ctx, &pb.PutRequest{Key: "k", Data: []byte("v")}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("expected FailedPrecondition, got %v", err)
+	}
+}
+
+func TestServerAddRemovePeer(t *testing.T) {
+	addr1 := freeAddr(t)
+	n1, err := node.New(idA, addr1, t.TempDir(), empty, true)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	addr2 := freeAddr(t)
+	n2, err := node.New(idB, addr2, t.TempDir(), empty, false)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	_ = n2
+
+	if waitLeader(n1) != n1 {
+		t.Fatalf("n1 not leader")
+	}
+	client, cleanup := startGRPC(t, n1)
+	defer cleanup()
+	ctx := context.Background()
+	if _, err := client.AddPeer(ctx, &pb.AddPeerRequest{Id: idB, Address: addr2}); err != nil {
+		t.Fatalf("add peer: %v", err)
+	}
+	if _, err := client.RemovePeer(ctx, &pb.RemovePeerRequest{Id: idB}); err != nil {
+		t.Fatalf("remove peer: %v", err)
 	}
 }
