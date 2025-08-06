@@ -19,6 +19,11 @@ type Node struct {
 	Store *store.Store
 }
 
+const (
+	opTimeout = 5 * time.Second
+	zeroIndex = 0
+)
+
 // New creates a new Raft node bound to the given address. The peers
 // argument is a comma separated list of other Raft server addresses
 // that form the initial cluster configuration.
@@ -75,7 +80,7 @@ func (n *Node) Put(key string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	f := n.raft.Apply(b, 5*time.Second)
+	f := n.raft.Apply(b, opTimeout)
 	return f.Error()
 }
 
@@ -89,3 +94,24 @@ func (n *Node) IsLeader() bool { return n.raft.State() == raft.Leader }
 
 // Leader returns the leader address.
 func (n *Node) Leader() raft.ServerAddress { return n.raft.Leader() }
+
+// Shutdown stops the Raft node.
+func (n *Node) Shutdown() error { return n.raft.Shutdown().Error() }
+
+// Join adds a voter to the Raft cluster.
+func (n *Node) Join(id, addr string) error {
+	f := n.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(addr), zeroIndex, opTimeout)
+	if err := f.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Leave removes a server from the Raft cluster.
+func (n *Node) Leave(id string) error {
+	f := n.raft.RemoveServer(raft.ServerID(id), zeroIndex, opTimeout)
+	if err := f.Error(); err != nil {
+		return err
+	}
+	return nil
+}

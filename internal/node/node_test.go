@@ -4,6 +4,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/raft"
 )
 
 // getFreePort returns address on localhost with free TCP port.
@@ -45,7 +47,7 @@ func TestNodePutGetSingleNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}
-	defer n.raft.Shutdown()
+	defer n.Shutdown()
 	if waitLeader(n) != n {
 		t.Fatalf("single node not elected leader")
 	}
@@ -68,12 +70,12 @@ func TestNodeReplicationAndFollowerPut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new n1: %v", err)
 	}
-	defer n1.raft.Shutdown()
+	defer n1.Shutdown()
 	n2, err := New(addr2, addr2, t.TempDir(), addr1)
 	if err != nil {
 		t.Fatalf("new n2: %v", err)
 	}
-	defer n2.raft.Shutdown()
+	defer n2.Shutdown()
 
 	leader := waitLeader(n1, n2)
 	if leader == nil {
@@ -100,4 +102,86 @@ func TestNodeReplicationAndFollowerPut(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatalf("follower did not replicate value")
+}
+
+func TestNodeJoinAndLeave(t *testing.T) {
+	addr1 := getFreePort(t)
+	n1, err := New("n1", addr1, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new n1: %v", err)
+	}
+	defer n1.Shutdown()
+	if waitLeader(n1) != n1 {
+		t.Fatalf("n1 not leader")
+	}
+
+	addr2 := getFreePort(t)
+	n2, err := New("n2", addr2, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new n2: %v", err)
+	}
+	defer n2.Shutdown()
+
+	if err := n1.Join("n2", addr2); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+
+	if err := n1.Put("k", []byte("v")); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if v, ok := n2.Get("k"); ok && string(v) == "v" {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if v, ok := n2.Get("k"); !ok || string(v) != "v" {
+		t.Fatalf("replication failed: %q %v", v, ok)
+	}
+
+	if err := n1.Leave("n2"); err != nil {
+		t.Fatalf("leave: %v", err)
+	}
+	f := n1.raft.GetConfiguration()
+	if err := f.Error(); err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	for _, s := range f.Configuration().Servers {
+		if s.ID == raft.ServerID("n2") {
+			t.Fatalf("n2 still in config")
+		}
+	}
+}
+
+func TestNodeJoinNotLeader(t *testing.T) {
+	addr1 := getFreePort(t)
+	addr2 := getFreePort(t)
+	n1, err := New(addr1, addr1, t.TempDir(), addr2)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	defer n1.Shutdown()
+	n2, err := New(addr2, addr2, t.TempDir(), addr1)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	defer n2.Shutdown()
+
+	leader := waitLeader(n1, n2)
+	if leader == nil {
+		t.Fatalf("no leader")
+	}
+	follower := n1
+	if leader == n1 {
+		follower = n2
+	}
+
+	if err := follower.Join("n3", getFreePort(t)); err == nil {
+		t.Fatalf("expected error from follower join")
+	}
+
+	if err := follower.Leave("n1"); err == nil {
+		t.Fatalf("expected error from follower leave")
+	}
 }

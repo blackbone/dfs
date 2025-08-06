@@ -121,3 +121,86 @@ func TestServerPutNotLeader(t *testing.T) {
 		t.Fatalf("expected FailedPrecondition, got %v", err)
 	}
 }
+
+func TestServerJoinAndLeave(t *testing.T) {
+	addr1 := freeAddr(t)
+	n1, err := node.New("n1", addr1, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	defer n1.Shutdown()
+	if waitLeader(n1) == nil {
+		t.Fatalf("n1 not leader")
+	}
+	client, cleanup := startGRPC(t, n1)
+	defer cleanup()
+
+	addr2 := freeAddr(t)
+	n2, err := node.New("n2", addr2, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	defer n2.Shutdown()
+
+	ctx := context.Background()
+	if _, err := client.Join(ctx, &pb.JoinRequest{Id: "n2", RaftAddr: addr2}); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "k", Data: []byte("v")}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if v, ok := n2.Get("k"); ok && string(v) == "v" {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if v, ok := n2.Get("k"); !ok || string(v) != "v" {
+		t.Fatalf("replication failed: %q %v", v, ok)
+	}
+
+	if _, err := client.Leave(ctx, &pb.LeaveRequest{Id: "n2"}); err != nil {
+		t.Fatalf("leave: %v", err)
+	}
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "k2", Data: []byte("v2")}); err != nil {
+		t.Fatalf("put after leave: %v", err)
+	}
+	time.Sleep(1 * time.Second)
+	if _, ok := n2.Get("k2"); ok {
+		t.Fatalf("removed node replicated data")
+	}
+}
+
+func TestServerJoinNotLeader(t *testing.T) {
+	addr1 := freeAddr(t)
+	addr2 := freeAddr(t)
+	n1, err := node.New(addr1, addr1, t.TempDir(), addr2)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	defer n1.Shutdown()
+	n2, err := node.New(addr2, addr2, t.TempDir(), addr1)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	defer n2.Shutdown()
+
+	leader := waitLeader(n1, n2)
+	if leader == nil {
+		t.Fatalf("no leader")
+	}
+	var follower *node.Node
+	if leader == n1 {
+		follower = n2
+	} else {
+		follower = n1
+	}
+	client, cleanup := startGRPC(t, follower)
+	defer cleanup()
+	ctx := context.Background()
+	if _, err := client.Join(ctx, &pb.JoinRequest{Id: "n3", RaftAddr: freeAddr(t)}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("expected FailedPrecondition, got %v", err)
+	}
+}

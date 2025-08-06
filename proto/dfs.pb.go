@@ -197,6 +197,174 @@ func (x *GetResponse) GetData() []byte {
 	return nil
 }
 
+type JoinRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	RaftAddr      string                 `protobuf:"bytes,2,opt,name=raft_addr,json=raftAddr,proto3" json:"raft_addr,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinRequest) Reset() {
+	*x = JoinRequest{}
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinRequest) ProtoMessage() {}
+
+func (x *JoinRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinRequest.ProtoReflect.Descriptor instead.
+func (*JoinRequest) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *JoinRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *JoinRequest) GetRaftAddr() string {
+	if x != nil {
+		return x.RaftAddr
+	}
+	return ""
+}
+
+type JoinResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinResponse) Reset() {
+	*x = JoinResponse{}
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinResponse) ProtoMessage() {}
+
+func (x *JoinResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinResponse.ProtoReflect.Descriptor instead.
+func (*JoinResponse) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{5}
+}
+
+type LeaveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveRequest) Reset() {
+	*x = LeaveRequest{}
+	mi := &file_proto_dfs_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveRequest) ProtoMessage() {}
+
+func (x *LeaveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveRequest.ProtoReflect.Descriptor instead.
+func (*LeaveRequest) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *LeaveRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type LeaveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveResponse) Reset() {
+	*x = LeaveResponse{}
+	mi := &file_proto_dfs_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveResponse) ProtoMessage() {}
+
+func (x *LeaveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveResponse.ProtoReflect.Descriptor instead.
+func (*LeaveResponse) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{7}
+}
+
 var File_proto_dfs_proto protoreflect.FileDescriptor
 
 const file_proto_dfs_proto_rawDesc = "" +
@@ -211,10 +379,19 @@ const file_proto_dfs_proto_rawDesc = "" +
 	"GetRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"!\n" +
 	"\vGetResponse\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data2a\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\":\n" +
+	"\vJoinRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\traft_addr\x18\x02 \x01(\tR\braftAddr\"\x0e\n" +
+	"\fJoinResponse\"\x1e\n" +
+	"\fLeaveRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x0f\n" +
+	"\rLeaveResponse2\xbe\x01\n" +
 	"\vFileService\x12(\n" +
 	"\x03Put\x12\x0f.dfs.PutRequest\x1a\x10.dfs.PutResponse\x12(\n" +
-	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponseB\tZ\a./protob\x06proto3"
+	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponse\x12+\n" +
+	"\x04Join\x12\x10.dfs.JoinRequest\x1a\x11.dfs.JoinResponse\x12.\n" +
+	"\x05Leave\x12\x11.dfs.LeaveRequest\x1a\x12.dfs.LeaveResponseB\tZ\a./protob\x06proto3"
 
 var (
 	file_proto_dfs_proto_rawDescOnce sync.Once
@@ -228,20 +405,28 @@ func file_proto_dfs_proto_rawDescGZIP() []byte {
 	return file_proto_dfs_proto_rawDescData
 }
 
-var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_proto_dfs_proto_goTypes = []any{
-	(*PutRequest)(nil),  // 0: dfs.PutRequest
-	(*PutResponse)(nil), // 1: dfs.PutResponse
-	(*GetRequest)(nil),  // 2: dfs.GetRequest
-	(*GetResponse)(nil), // 3: dfs.GetResponse
+	(*PutRequest)(nil),    // 0: dfs.PutRequest
+	(*PutResponse)(nil),   // 1: dfs.PutResponse
+	(*GetRequest)(nil),    // 2: dfs.GetRequest
+	(*GetResponse)(nil),   // 3: dfs.GetResponse
+	(*JoinRequest)(nil),   // 4: dfs.JoinRequest
+	(*JoinResponse)(nil),  // 5: dfs.JoinResponse
+	(*LeaveRequest)(nil),  // 6: dfs.LeaveRequest
+	(*LeaveResponse)(nil), // 7: dfs.LeaveResponse
 }
 var file_proto_dfs_proto_depIdxs = []int32{
 	0, // 0: dfs.FileService.Put:input_type -> dfs.PutRequest
 	2, // 1: dfs.FileService.Get:input_type -> dfs.GetRequest
-	1, // 2: dfs.FileService.Put:output_type -> dfs.PutResponse
-	3, // 3: dfs.FileService.Get:output_type -> dfs.GetResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	4, // 2: dfs.FileService.Join:input_type -> dfs.JoinRequest
+	6, // 3: dfs.FileService.Leave:input_type -> dfs.LeaveRequest
+	1, // 4: dfs.FileService.Put:output_type -> dfs.PutResponse
+	3, // 5: dfs.FileService.Get:output_type -> dfs.GetResponse
+	5, // 6: dfs.FileService.Join:output_type -> dfs.JoinResponse
+	7, // 7: dfs.FileService.Leave:output_type -> dfs.LeaveResponse
+	4, // [4:8] is the sub-list for method output_type
+	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -258,7 +443,7 @@ func file_proto_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_dfs_proto_rawDesc), len(file_proto_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

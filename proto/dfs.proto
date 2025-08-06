@@ -5,6 +5,8 @@ option go_package = "./proto";
 service FileService {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Get(GetRequest) returns (GetResponse);
+  rpc Join(JoinRequest) returns (JoinResponse);
+  rpc Leave(LeaveRequest) returns (LeaveResponse);
 }
 
 message PutRequest {
@@ -21,3 +23,16 @@ message GetRequest {
 message GetResponse {
   bytes data = 1;
 }
+
+message JoinRequest {
+  string id = 1;
+  string raft_addr = 2;
+}
+
+message JoinResponse {}
+
+message LeaveRequest {
+  string id = 1;
+}
+
+message LeaveResponse {}
