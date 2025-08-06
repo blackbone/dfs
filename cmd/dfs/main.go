@@ -1,77 +1,42 @@
-// Program dfs starts a single node of the distributed key/value store.
+// Program dfs starts a single DFS node.
 package main
 
 import (
 	"flag"
 	"log"
-	"net"
-	"strconv"
 	"strings"
-
-	"google.golang.org/grpc"
+	"time"
 
 	"dfs"
 	dfsfs "dfs/internal/fusefs"
 	"dfs/internal/node"
-	"dfs/internal/server"
-	pb "dfs/proto"
 )
-
-// withDefaultPort ensures the address has a port. If missing, defaultPort
-// is appended. An empty host is allowed and results in ":port".
-func withDefaultPort(addr string, defaultPort int) string {
-	if _, _, err := net.SplitHostPort(addr); err == nil {
-		return addr
-	}
-	return net.JoinHostPort(addr, strconv.Itoa(defaultPort))
-}
 
 func main() {
 	id := flag.String("id", "node1", "node ID")
-	raftAddr := flag.String("raft", "", "raft bind address")
-	grpcAddr := flag.String("grpc", "", "gRPC bind address")
-	dataDir := flag.String("data", "data", "data directory")
-	peers := flag.String("peers", "", "comma separated peer raft addresses")
+	addr := flag.String("addr", "127.0.0.1:9000", "HTTP bind address")
+	peerStr := flag.String("peers", "", "comma separated peer addresses")
+	hostfs := flag.String("hostfs", "/mnt/hostfs", "host cache directory")
+	blobdir := flag.String("blobdir", "/var/lib/dfs/blobstore", "blob store directory")
 	flag.Parse()
 
-	const (
-		defaultRaftPort = 12000
-		defaultGRPCPort = 13000
-	)
-
-	rAddr := withDefaultPort(*raftAddr, defaultRaftPort)
-	gAddr := withDefaultPort(*grpcAddr, defaultGRPCPort)
-	peerStr := ""
-	if *peers != "" {
-		var ps []string
-		for _, p := range strings.Split(*peers, ",") {
-			ps = append(ps, withDefaultPort(p, defaultRaftPort))
-		}
-		peerStr = strings.Join(ps, ",")
+	var peers []string
+	if *peerStr != "" {
+		peers = strings.Split(*peerStr, ",")
 	}
 
-	n, err := node.New(*id, rAddr, *dataDir, peerStr)
+	n, err := node.New(*id, *addr, *hostfs, *blobdir, peers)
 	if err != nil {
 		log.Fatalf("node: %v", err)
 	}
 	dfs.SetNode(n)
+	n.BackgroundCheck(30 * time.Second)
 
-	// Start FUSE filesystem and cache watcher.
 	go func() {
-		if err := dfsfs.Mount("/mnt/dfs", "/mnt/hostfs"); err != nil {
+		if err := dfsfs.Mount("/mnt/dfs", *hostfs); err != nil {
 			log.Fatalf("mount: %v", err)
 		}
 	}()
-	go dfsfs.Watch("/mnt/hostfs")
-
-	lis, err := net.Listen("tcp", gAddr)
-	if err != nil {
-		log.Fatalf("listen: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterFileServiceServer(s, server.New(n))
-	log.Printf("gRPC listening on %s", gAddr)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
-	}
+	log.Printf("node %s listening on %s", *id, *addr)
+	select {}
 }

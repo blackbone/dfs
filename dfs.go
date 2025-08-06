@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"dfs/internal/metadata"
 	"dfs/internal/node"
 )
 
@@ -13,14 +14,12 @@ var (
 	n      *node.Node
 )
 
-// SetNode registers the active DFS node.
 func SetNode(nd *node.Node) {
 	nodeMu.Lock()
 	n = nd
 	nodeMu.Unlock()
 }
 
-// GetFile returns the file contents for the given path.
 func GetFile(path string) ([]byte, error) {
 	nodeMu.RLock()
 	nd := n
@@ -28,9 +27,19 @@ func GetFile(path string) ([]byte, error) {
 	if nd == nil {
 		return nil, errors.New("node not initialized")
 	}
-	data, ok := nd.Get(path)
+	return nd.GetFile(path)
+}
+
+func GetMetadata(path string) (*metadata.FileMeta, error) {
+	nodeMu.RLock()
+	nd := n
+	nodeMu.RUnlock()
+	if nd == nil {
+		return nil, errors.New("node not initialized")
+	}
+	m, ok := nd.GetMetadata(path)
 	if !ok {
 		return nil, os.ErrNotExist
 	}
-	return data, nil
+	return m, nil
 }

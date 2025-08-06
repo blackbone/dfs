@@ -1,91 +1,191 @@
-// Package node manages a single Raft instance and its state machine.
 package node
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
-	"net"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/raft"
-
-	"dfs/internal/store"
+	"dfs/internal/blobstore"
+	"dfs/internal/metadata"
 )
 
-// Node wraps a Raft instance and its finite state machine store.
 type Node struct {
-	raft  *raft.Raft
-	Store *store.Store
+	ID     string
+	Addr   string
+	peers  []string
+	Meta   *metadata.Store
+	Blobs  *blobstore.Store
+	hostfs string
+	client *http.Client
 }
 
-// New creates a new Raft node bound to the given address. The peers
-// argument is a comma separated list of other Raft server addresses
-// that form the initial cluster configuration.
-func New(id, bind, dataDir, peers string) (*Node, error) {
-	cfg := raft.DefaultConfig()
-	cfg.LocalID = raft.ServerID(id)
-
-	addr, err := net.ResolveTCPAddr("tcp", bind)
-	if err != nil {
-		return nil, err
+func New(id, addr, hostfs, blobDir string, peers []string) (*Node, error) {
+	n := &Node{
+		ID:     id,
+		Addr:   addr,
+		peers:  peers,
+		Meta:   metadata.New(),
+		Blobs:  blobstore.New(blobDir),
+		hostfs: hostfs,
+		client: &http.Client{Timeout: 10 * time.Second},
 	}
-	// Each node communicates with others over a TCP transport.
-	transport, err := raft.NewTCPTransport(bind, addr, 3, 10*time.Second, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	snap, err := raft.NewFileSnapshotStore(dataDir, 1, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-	logStore := raft.NewInmemStore()
-	stableStore := raft.NewInmemStore()
-	fsm := store.New()
-	// Create the Raft system with our in-memory log and stable stores.
-	r, err := raft.NewRaft(cfg, fsm, logStore, stableStore, snap, transport)
-	if err != nil {
-		return nil, err
-	}
-
-	n := &Node{raft: r, Store: fsm}
-
-	// Bootstrap cluster by configuring the known peers plus this node.
-	configuration := raft.Configuration{}
-	for _, p := range strings.Split(peers, ",") {
-		if p == "" {
-			continue
-		}
-		configuration.Servers = append(configuration.Servers, raft.Server{
-			ID:      raft.ServerID(p),
-			Address: raft.ServerAddress(p),
-		})
-	}
-	configuration.Servers = append(configuration.Servers, raft.Server{ID: cfg.LocalID, Address: transport.LocalAddr()})
-	r.BootstrapCluster(configuration)
-
+	mux := http.NewServeMux()
+	mux.HandleFunc("/blob", n.handleBlob)
+	mux.HandleFunc("/update", n.handleUpdate)
+	mux.HandleFunc("/delete", n.handleDelete)
+	go http.ListenAndServe(addr, mux)
 	return n, nil
 }
 
-// Put replicates a key/value pair through Raft.
-func (n *Node) Put(key string, data []byte) error {
-	c := &store.Command{Op: store.OpPut, Key: store.S2B(key), Data: data}
-	b, err := json.Marshal(c)
-	if err != nil {
+func (n *Node) PutFile(path string, data []byte) error {
+	m, ok := n.Meta.Get(path)
+	version := 1
+	if ok {
+		version = m.Version + 1
+	}
+	hash := fmt.Sprintf("%x", sha256.Sum256(data))
+	if err := n.Blobs.Save(path, version, data); err != nil {
 		return err
 	}
-	f := n.raft.Apply(b, 5*time.Second)
-	return f.Error()
+	diskPath := filepath.Join(n.hostfs, path)
+	if err := os.MkdirAll(filepath.Dir(diskPath), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(diskPath, data, 0o444); err != nil {
+		return err
+	}
+	meta := &metadata.FileMeta{Path: path, Version: version, Hash: hash, Owner: n.Addr}
+	n.Meta.Put(meta)
+	n.notifyPeers(meta)
+	return nil
 }
 
-// Get returns value if present.
-func (n *Node) Get(key string) ([]byte, bool) {
-	return n.Store.Get(key)
+func (n *Node) GetFile(path string) ([]byte, error) {
+	m, ok := n.Meta.Get(path)
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	if m.Owner == n.Addr {
+		return n.Blobs.Load(path, m.Version)
+	}
+	if data, err := n.Blobs.Load(path, m.Version); err == nil {
+		return data, nil
+	}
+	url := fmt.Sprintf("http://%s/blob?path=%s&version=%d", m.Owner, path, m.Version)
+	resp, err := n.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, os.ErrNotExist
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	_ = n.Blobs.Save(path, m.Version, data)
+	diskPath := filepath.Join(n.hostfs, path)
+	_ = os.MkdirAll(filepath.Dir(diskPath), 0o755)
+	_ = os.WriteFile(diskPath, data, 0o444)
+	return data, nil
 }
 
-// IsLeader reports whether this node is the cluster leader.
-func (n *Node) IsLeader() bool { return n.raft.State() == raft.Leader }
+func (n *Node) DeleteFile(path string) {
+	n.Meta.Delete(path)
+	n.Blobs.Delete(path)
+	os.Remove(filepath.Join(n.hostfs, path))
+	n.notifyDelete(path)
+}
 
-// Leader returns the leader address.
-func (n *Node) Leader() raft.ServerAddress { return n.raft.Leader() }
+func (n *Node) GetMetadata(path string) (*metadata.FileMeta, bool) {
+	return n.Meta.Get(path)
+}
+
+func (n *Node) notifyPeers(meta *metadata.FileMeta) {
+	b, _ := json.Marshal(meta)
+	for _, p := range n.peers {
+		if p == n.Addr {
+			continue
+		}
+		_, _ = n.client.Post("http://"+p+"/update", "application/json", bytes.NewReader(b))
+	}
+}
+
+func (n *Node) notifyDelete(path string) {
+	for _, p := range n.peers {
+		if p == n.Addr {
+			continue
+		}
+		_, _ = n.client.Post("http://"+p+"/delete", "text/plain", strings.NewReader(path))
+	}
+}
+
+func (n *Node) handleBlob(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	versionStr := r.URL.Query().Get("version")
+	var version int
+	fmt.Sscanf(versionStr, "%d", &version)
+	data, err := n.Blobs.Load(path, version)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Write(data)
+}
+
+func (n *Node) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var m metadata.FileMeta
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	n.Meta.Put(&m)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (n *Node) handleDelete(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	b, _ := io.ReadAll(r.Body)
+	path := string(b)
+	n.Meta.Delete(path)
+	n.Blobs.Delete(path)
+	os.Remove(filepath.Join(n.hostfs, path))
+	w.WriteHeader(http.StatusOK)
+}
+
+func (n *Node) BackgroundCheck(interval time.Duration) {
+	go func() {
+		for {
+			filepath.WalkDir(n.hostfs, func(p string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				rel, _ := filepath.Rel(n.hostfs, p)
+				meta, ok := n.Meta.Get(rel)
+				if !ok {
+					os.Remove(p)
+					return nil
+				}
+				data, err := os.ReadFile(p)
+				if err != nil {
+					return nil
+				}
+				hash := fmt.Sprintf("%x", sha256.Sum256(data))
+				if hash != meta.Hash {
+					os.Remove(p)
+				}
+				return nil
+			})
+			time.Sleep(interval)
+		}
+	}()
+}

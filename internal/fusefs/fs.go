@@ -2,6 +2,8 @@ package fusefs
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,17 +45,22 @@ func (f *FS) ensure(path string) ([]byte, error) {
 		return data, nil
 	}
 
-	// Check on-disk cache
-	diskPath := filepath.Join(f.cacheDir, path)
-	data, err := os.ReadFile(diskPath)
-	if err == nil {
-		f.mu.Lock()
-		f.mem[path] = data
-		f.mu.Unlock()
-		return data, nil
+	meta, err := dfs.GetMetadata(path)
+	if err != nil {
+		return nil, err
 	}
 
-	// Fetch from DFS
+	diskPath := filepath.Join(f.cacheDir, path)
+	if data, err := os.ReadFile(diskPath); err == nil {
+		hash := fmt.Sprintf("%x", sha256.Sum256(data))
+		if hash == meta.Hash {
+			f.mu.Lock()
+			f.mem[path] = data
+			f.mu.Unlock()
+			return data, nil
+		}
+	}
+
 	log.Printf("fetching %s from DFS", path)
 	data, err = dfs.GetFile(path)
 	if err != nil {
@@ -114,6 +121,17 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		res = append(res, de)
 	}
 	return res, nil
+}
+
+// Remove deletes the cached entry only.
+func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	full := filepath.Join(d.path, req.Name)
+	diskPath := filepath.Join(d.fs.cacheDir, full)
+	_ = os.RemoveAll(diskPath)
+	d.fs.mu.Lock()
+	delete(d.fs.mem, full)
+	d.fs.mu.Unlock()
+	return nil
 }
 
 // File represents a file node.
