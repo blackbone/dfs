@@ -4,16 +4,18 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 
 	"dfs"
 	dfsfs "dfs/internal/fusefs"
 	"dfs/internal/node"
+	obs "dfs/internal/observability"
 	"dfs/internal/server"
 	pb "dfs/proto"
 )
@@ -38,6 +40,15 @@ func main() {
 	const (
 		defaultRaftPort = 12000
 		defaultGRPCPort = 13000
+		metricsAddr     = ":2112"
+
+		msgNode   = "node"
+		msgMount  = "mount"
+		msgWatch  = "watch"
+		msgListen = "listen"
+		msgServe  = "serve"
+		msgGRPC   = "grpc_listen"
+		msgMetric = "metrics_listen"
 	)
 
 	rAddr := withDefaultPort(*raftAddr, defaultRaftPort)
@@ -53,30 +64,39 @@ func main() {
 
 	n, err := node.New(*id, rAddr, *dataDir, peerStr)
 	if err != nil {
-		log.Fatalf("node: %v", err)
+		obs.Logger.Fatal().Err(err).Msg(msgNode)
 	}
 	dfs.SetNode(n)
 
 	// Start FUSE filesystem and cache watcher.
 	go func() {
 		if err := dfsfs.Mount("/mnt/dfs", "/mnt/hostfs"); err != nil {
-			log.Fatalf("mount: %v", err)
+			obs.Logger.Fatal().Err(err).Msg(msgMount)
 		}
 	}()
 	go func() {
 		if err := dfsfs.Watch(context.Background(), "/mnt/hostfs"); err != nil {
-			log.Fatalf("watch: %v", err)
+			obs.Logger.Fatal().Err(err).Msg(msgWatch)
+		}
+	}()
+
+	// Register metrics and start HTTP server.
+	obs.Register()
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(metricsAddr, nil); err != nil {
+			obs.Logger.Fatal().Err(err).Msg(msgMetric)
 		}
 	}()
 
 	lis, err := net.Listen("tcp", gAddr)
 	if err != nil {
-		log.Fatalf("listen: %v", err)
+		obs.Logger.Fatal().Err(err).Msg(msgListen)
 	}
 	s := grpc.NewServer()
 	pb.RegisterFileServiceServer(s, server.New(n))
-	log.Printf("gRPC listening on %s", gAddr)
+	obs.Logger.Info().Str(obs.FieldAddress, gAddr).Msg(msgGRPC)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
+		obs.Logger.Fatal().Err(err).Msg(msgServe)
 	}
 }

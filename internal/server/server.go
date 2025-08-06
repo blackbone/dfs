@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"dfs/internal/node"
+	obs "dfs/internal/observability"
 	pb "dfs/proto"
 )
 
@@ -23,6 +24,7 @@ func New(n *node.Node) *Server { return &Server{node: n} }
 // Put stores a key/value pair. Writes must go through the leader
 // in order to be replicated via Raft.
 func (s *Server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
+	obs.PutCounter.Inc()
 	if !s.node.IsLeader() {
 		return nil, status.Errorf(codes.FailedPrecondition, "not leader: %s", s.node.Leader())
 	}
@@ -35,6 +37,7 @@ func (s *Server) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, 
 // Get returns the value for a key. Reads are served from the local
 // state machine and therefore can be handled by any node.
 func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	obs.GetCounter.Inc()
 	data, ok := s.node.Get(req.Key)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "not found")

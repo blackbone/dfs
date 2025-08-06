@@ -23,8 +23,8 @@ func dialer(l *bufconn.Listener) func(context.Context, string) (net.Conn, error)
 	}
 }
 
-func startGRPC(t *testing.T, n *node.Node) (pb.FileServiceClient, func()) {
-	t.Helper()
+func startGRPC(tb testing.TB, n *node.Node) (pb.FileServiceClient, func()) {
+	tb.Helper()
 	lis := bufconn.Listen(bufSize)
 	srv := grpc.NewServer()
 	pb.RegisterFileServiceServer(srv, New(n))
@@ -32,7 +32,7 @@ func startGRPC(t *testing.T, n *node.Node) (pb.FileServiceClient, func()) {
 	ctx := context.Background()
 	conn, err := grpc.DialContext(ctx, "buf", grpc.WithContextDialer(dialer(lis)), grpc.WithInsecure())
 	if err != nil {
-		t.Fatalf("dial: %v", err)
+		tb.Fatalf("dial: %v", err)
 	}
 	client := pb.NewFileServiceClient(conn)
 	cleanup := func() {
@@ -56,11 +56,11 @@ func waitLeader(nodes ...*node.Node) *node.Node {
 	return nil
 }
 
-func freeAddr(t *testing.T) string {
-	t.Helper()
+func freeAddr(tb testing.TB) string {
+	tb.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("listen: %v", err)
+		tb.Fatalf("listen: %v", err)
 	}
 	addr := l.Addr().String()
 	l.Close()

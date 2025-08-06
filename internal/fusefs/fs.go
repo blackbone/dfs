@@ -2,7 +2,6 @@ package fusefs
 
 import (
 	"context"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,6 +11,15 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"dfs"
+	obs "dfs/internal/observability"
+)
+
+const (
+	msgFetching     = "fetching"
+	msgServe        = "serve"
+	msgWatchAdd     = "watch_add"
+	msgPutFile      = "put_file"
+	msgWatcherError = "watcher_error"
 )
 
 // FS implements a simple read-only FUSE filesystem backed by a cache
@@ -54,7 +62,7 @@ func (f *FS) ensure(path string) ([]byte, error) {
 	}
 
 	// Fetch from DFS
-	log.Printf("fetching %s from DFS", path)
+	obs.Logger.Info().Str(obs.FieldPath, path).Msg(msgFetching)
 	data, err = dfs.GetFile(path)
 	if err != nil {
 		return nil, err
@@ -150,7 +158,7 @@ func Mount(mountPoint, cacheDir string) error {
 	}
 	go func() {
 		if err := bazilfs.Serve(c, fs); err != nil {
-			log.Fatalf("serve: %v", err)
+			obs.Logger.Fatal().Err(err).Msg(msgServe)
 		}
 	}()
 	return nil
@@ -166,7 +174,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 	defer watcher.Close()
 	addDir := func(p string) {
 		if err := watcher.Add(p); err != nil {
-			log.Printf("watch add: %v", err)
+			obs.Logger.Error().Err(err).Msg(msgWatchAdd)
 		}
 	}
 	filepath.WalkDir(cacheDir, func(p string, d os.DirEntry, err error) error {
@@ -192,7 +200,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 						if err == nil {
 							if data, err := os.ReadFile(ev.Name); err == nil {
 								if err := dfs.PutFile(rel, data); err != nil {
-									log.Printf("put file: %v", err)
+									obs.Logger.Error().Err(err).Msg(msgPutFile)
 								}
 							}
 						}
@@ -203,7 +211,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 			if !ok {
 				return nil
 			}
-			log.Printf("watcher error: %v", err)
+			obs.Logger.Error().Err(err).Msg(msgWatcherError)
 		}
 	}
 }
