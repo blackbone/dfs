@@ -3,30 +3,24 @@ package dfs
 import (
 	"errors"
 	"os"
-	"sync"
+	"sync/atomic"
 
 	"dfs/internal/node"
 )
 
 var (
-	nodeMu sync.RWMutex
-	n      *node.Node
+	nodePtr               atomic.Pointer[node.Node]            // active DFS node
+	errNodeNotInitialized = errors.New("node not initialized") // SetNode has not been called
 )
 
 // SetNode registers the active DFS node.
-func SetNode(nd *node.Node) {
-	nodeMu.Lock()
-	n = nd
-	nodeMu.Unlock()
-}
+func SetNode(nd *node.Node) { nodePtr.Store(nd) }
 
 // GetFile returns the file contents for the given path.
 func GetFile(path string) ([]byte, error) {
-	nodeMu.RLock()
-	nd := n
-	nodeMu.RUnlock()
+	nd := nodePtr.Load()
 	if nd == nil {
-		return nil, errors.New("node not initialized")
+		return nil, errNodeNotInitialized
 	}
 	data, ok := nd.Get(path)
 	if !ok {
@@ -37,11 +31,9 @@ func GetFile(path string) ([]byte, error) {
 
 // PutFile stores the file contents for the given path through the active node.
 func PutFile(path string, data []byte) error {
-	nodeMu.RLock()
-	nd := n
-	nodeMu.RUnlock()
+	nd := nodePtr.Load()
 	if nd == nil {
-		return errors.New("node not initialized")
+		return errNodeNotInitialized
 	}
 	return nd.Put(path, data)
 }
