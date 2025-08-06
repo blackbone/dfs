@@ -21,18 +21,18 @@ const (
 	sleepMillis = 10
 )
 
-func freePort(t *testing.T) string {
-	t.Helper()
+func freePort(tb testing.TB) string {
+	tb.Helper()
 	l, err := net.Listen("tcp", addrHost+":0")
 	if err != nil {
-		t.Fatalf("listen: %v", err)
+		tb.Fatalf("listen: %v", err)
 	}
 	defer l.Close()
 	return l.Addr().String()
 }
 
-func waitLeader(t *testing.T, n *node.Node) {
-	t.Helper()
+func waitLeader(tb testing.TB, n *node.Node) {
+	tb.Helper()
 	deadline := time.Now().Add(time.Duration(waitSeconds) * time.Second)
 	for time.Now().Before(deadline) {
 		if n.IsLeader() {
@@ -40,18 +40,18 @@ func waitLeader(t *testing.T, n *node.Node) {
 		}
 		time.Sleep(time.Duration(sleepMillis) * time.Millisecond)
 	}
-	t.Fatalf("leader not elected")
+	tb.Fatalf("leader not elected")
 }
 
 func TestGetFileNoNode(t *testing.T) {
-	if _, err := GetFile(sampleKey); err == nil {
-		t.Fatalf("expected error")
+	if _, err := GetFile(sampleKey); !errors.Is(err, errNodeNotInitialized) {
+		t.Fatalf("expected node not initialized error, got %v", err)
 	}
 }
 
 func TestPutFileNoNode(t *testing.T) {
-	if err := PutFile(sampleKey, []byte(sampleVal)); err == nil {
-		t.Fatalf("expected error")
+	if err := PutFile(sampleKey, []byte(sampleVal)); !errors.Is(err, errNodeNotInitialized) {
+		t.Fatalf("expected node not initialized error, got %v", err)
 	}
 }
 
