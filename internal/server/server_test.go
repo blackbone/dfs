@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
+	"dfs/internal/metastore"
 	"dfs/internal/node"
 	pb "dfs/proto"
 )
@@ -151,5 +152,32 @@ func TestServerAddRemovePeer(t *testing.T) {
 	}
 	if _, err := client.RemovePeer(ctx, &pb.RemovePeerRequest{Id: idB}); err != nil {
 		t.Fatalf("remove peer: %v", err)
+	}
+}
+
+func TestServerSyncMetadata(t *testing.T) {
+	n := &node.Node{Meta: metastore.New()}
+	client, cleanup := startGRPC(t, n)
+	defer cleanup()
+	ctx := context.Background()
+	req := &pb.SyncMetadataRequest{Meta: &pb.Metadata{
+		Path:     "/m",
+		Version:  1,
+		Replicas: []uint64{1, 2},
+	}}
+	if _, err := client.SyncMetadata(ctx, req); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	e, ok := n.Meta.Get("/m")
+	if !ok || e.Version != 1 || len(e.Replicas) != 2 {
+		t.Fatalf("unexpected %+v ok=%v", e, ok)
+	}
+	req.Meta.Deleted = true
+	req.Meta.Version = 2
+	if _, err := client.SyncMetadata(ctx, req); err != nil {
+		t.Fatalf("delete sync: %v", err)
+	}
+	if _, ok := n.Meta.Get("/m"); ok {
+		t.Fatalf("expected deleted")
 	}
 }

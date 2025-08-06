@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/raft"
 
+	"dfs/internal/metastore"
 	"dfs/internal/store"
 )
 
@@ -26,6 +27,7 @@ const (
 type Node struct {
 	raft  *raft.Raft
 	Store *store.Store
+	Meta  *metastore.Store
 }
 
 // New creates a new Raft node bound to the given address. The peers
@@ -54,13 +56,14 @@ func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	logStore := raft.NewInmemStore()
 	stableStore := raft.NewInmemStore()
 	fsm := store.New()
+	meta := metastore.New()
 	// Create the Raft system with our in-memory log and stable stores.
 	r, err := raft.NewRaft(cfg, fsm, logStore, stableStore, snap, transport)
 	if err != nil {
 		return nil, err
 	}
 
-	n := &Node{raft: r, Store: fsm}
+	n := &Node{raft: r, Store: fsm, Meta: meta}
 
 	if bootstrap {
 		configuration := raft.Configuration{}

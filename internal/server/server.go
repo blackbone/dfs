@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"dfs/internal/metastore"
 	"dfs/internal/node"
 	pb "dfs/proto"
 )
@@ -15,6 +16,7 @@ const (
 	errNotLeader = "not leader: %s"
 	errInternal  = "%v"
 	errNotFound  = "not found"
+	errBadMeta   = "bad metadata"
 )
 
 // Server implements the FileService gRPC interface. Each instance
@@ -68,4 +70,26 @@ func (s *Server) RemovePeer(ctx context.Context, req *pb.RemovePeerRequest) (*pb
 		return nil, status.Errorf(codes.Internal, errInternal, err)
 	}
 	return &pb.RemovePeerResponse{}, nil
+}
+
+// SyncMetadata syncs file metadata to local store.
+func (s *Server) SyncMetadata(ctx context.Context, req *pb.SyncMetadataRequest) (*pb.SyncMetadataResponse, error) {
+	m := req.GetMeta()
+	if m == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errBadMeta)
+	}
+	var hash [32]byte
+	copy(hash[:], m.Hash)
+	reps := make([]metastore.ReplicaID, len(m.Replicas))
+	for i, r := range m.Replicas {
+		reps[i] = metastore.ReplicaID(r)
+	}
+	s.node.Meta.Sync(&metastore.Entry{
+		Path:     m.Path,
+		Version:  m.Version,
+		Hash:     hash,
+		Replicas: reps,
+		Deleted:  m.Deleted,
+	})
+	return &pb.SyncMetadataResponse{}, nil
 }
