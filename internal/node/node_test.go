@@ -2,14 +2,26 @@ package node
 
 import (
 	"net"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/raft"
+)
+
+const (
+	host    = "127.0.0.1"
+	empty   = ""
+	idA     = "n1"
+	idB     = "n2"
+	timeout = 5
+	tmpPref = "file"
 )
 
 // getFreePort returns address on localhost with free TCP port.
 func getFreePort(t *testing.T) string {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := net.Listen("tcp", host+":0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -100,4 +112,31 @@ func TestNodeReplicationAndFollowerPut(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatalf("follower did not replicate value")
+}
+
+func TestNewSnapshotDirIsFile(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), tmpPref)
+	if err != nil {
+		t.Fatalf("temp: %v", err)
+	}
+	f.Close()
+	addr := getFreePort(t)
+	if _, err := New(idA, addr, f.Name(), empty); err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestLeader(t *testing.T) {
+	addr := getFreePort(t)
+	n, err := New(idA, addr, t.TempDir(), empty)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	defer n.raft.Shutdown()
+	if waitLeader(n) != n {
+		t.Fatalf("no leader")
+	}
+	if n.Leader() == raft.ServerAddress(empty) {
+		t.Fatalf("empty leader")
+	}
 }
