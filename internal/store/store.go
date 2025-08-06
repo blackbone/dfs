@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
-	"unsafe"
 
 	"github.com/hashicorp/raft"
 )
@@ -26,11 +25,11 @@ type Command struct {
 	Data []byte `json:"data,omitempty"`
 }
 
-// S2B converts a string to a byte slice without allocation.
-func S2B(s string) []byte { return *(*[]byte)(unsafe.Pointer(&s)) }
+// S2B converts a string to a byte slice.
+func S2B(s string) []byte { return []byte(s) }
 
-// B2S converts a byte slice to a string without allocation.
-func B2S(b []byte) string { return *(*string)(unsafe.Pointer(&b)) }
+// B2S converts a byte slice to a string.
+func B2S(b []byte) string { return string(b) }
 
 // Store is a simple in-memory key/value store implementing raft.FSM.
 type Store struct {
