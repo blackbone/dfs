@@ -1,35 +1,42 @@
 # dfs
 
-This repository contains a minimal distributed key/value store demonstrating
-gRPC-based APIs with Raft leader election and log replication.
+`dfs` is a tiny distributed key/value store built on top of
+[Hashicorp Raft](https://github.com/hashicorp/raft) for consensus and
+gRPC for the public API. It is intended as a learning example rather
+than a production system.
+
+## Building
+
+```sh
+go build ./cmd/dfs
+```
 
 ## Running
 
+Each process hosts a single node. Raft traffic defaults to port `12000`
+and the gRPC API to `13000`, so they can be omitted from the flags.
+
+```sh
+# start first node
+./dfs -id node1
+
+# start second node and join the first
+./dfs -id node2 -peers node1
 ```
-go build ./cmd/dfs
-./dfs -id node1 -raft :12000 -grpc :13000 -data data1
-./dfs -id node2 -raft :12001 -grpc :13001 -data data2 -peers :12000
-```
 
-After the cluster elects a leader, use a gRPC client to invoke `Put` and `Get`
-requests against the leader's gRPC endpoint.
+Once a leader is elected you can store and retrieve data using any gRPC
+client. The `USAGE.md` file shows examples with `grpcurl` and Docker
+Compose for a three node cluster.
 
----
+## Extending
 
-The content below is from the Google File System paper and left for reference.
+The project is intentionally small:
 
-The Google File System
-Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung
-Google∗
-ABSTRACT
-We have designed and implemented the Google File Sys-
-tem, a scalable distributed file system for large distributed
-data-intensive applications. It provides fault tolerance while
-running on inexpensive commodity hardware, and it delivers
-high aggregate performance to a large number of clients.
-While sharing many of the same goals as previous dis-
-tributed file systems, our design has been driven by obser-
-vations of our application workloads and technological envi-
-ronment, both current and anticipated, that reflect a marked
-departure from some earlier file system assumptions. This
-has led us to reexamine traditional choices and explore rad-
+* `cmd/dfs` contains the entry point and flag parsing.
+* `internal/node` wraps a Raft instance.
+* `internal/store` implements the replicated key/value state machine.
+* `internal/server` exposes the gRPC `FileService` backed by the store.
+
+New functionality can be added by extending the store and exposing new
+RPC methods in the server package.
+
