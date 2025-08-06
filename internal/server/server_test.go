@@ -121,3 +121,24 @@ func TestServerPutNotLeader(t *testing.T) {
 		t.Fatalf("expected FailedPrecondition, got %v", err)
 	}
 }
+
+func TestServerReport(t *testing.T) {
+	addr := freeAddr(t)
+	n, err := node.New("n1", addr, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new node: %v", err)
+	}
+	if waitLeader(n) == nil {
+		t.Fatalf("no leader")
+	}
+	client, cleanup := startGRPC(t, n)
+	defer cleanup()
+	ctx := context.Background()
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "k", Data: []byte("v")}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	resp, err := client.Report(ctx, &pb.ReportRequest{})
+	if err != nil || len(resp.Entries) != 1 || resp.Entries[0].Key != "k" {
+		t.Fatalf("report: %v resp=%v", err, resp)
+	}
+}

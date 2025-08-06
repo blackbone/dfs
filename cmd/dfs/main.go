@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -42,10 +43,19 @@ func main() {
 	rAddr := withDefaultPort(*raftAddr, defaultRaftPort)
 	gAddr := withDefaultPort(*grpcAddr, defaultGRPCPort)
 	peerStr := ""
+	var grpcPeers []string
 	if *peers != "" {
 		var ps []string
+		offset := defaultGRPCPort - defaultRaftPort
 		for _, p := range strings.Split(*peers, ",") {
-			ps = append(ps, withDefaultPort(p, defaultRaftPort))
+			rp := withDefaultPort(p, defaultRaftPort)
+			ps = append(ps, rp)
+			host, portStr, err := net.SplitHostPort(rp)
+			if err == nil {
+				if port, err := strconv.Atoi(portStr); err == nil {
+					grpcPeers = append(grpcPeers, net.JoinHostPort(host, strconv.Itoa(port+offset)))
+				}
+			}
 		}
 		peerStr = strings.Join(ps, ",")
 	}
@@ -55,6 +65,14 @@ func main() {
 		log.Fatalf("node: %v", err)
 	}
 	dfs.SetNode(n)
+
+	go func() {
+		const checkInterval = 200 * time.Millisecond
+		for !n.IsLeader() {
+			time.Sleep(checkInterval)
+		}
+		_ = n.Restore(grpcPeers)
+	}()
 
 	// Start FUSE filesystem and cache watcher.
 	go func() {

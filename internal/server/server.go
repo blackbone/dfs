@@ -41,3 +41,13 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	}
 	return &pb.GetResponse{Data: data}, nil
 }
+
+// Report returns all metadata entries known to this node.
+func (s *Server) Report(ctx context.Context, req *pb.ReportRequest) (*pb.ReportResponse, error) {
+	es := s.node.Store.Entries()
+	res := make([]*pb.Metadata, len(es))
+	for i, e := range es {
+		res[i] = &pb.Metadata{Key: e.Key, Data: e.Data}
+	}
+	return &pb.ReportResponse{Entries: res}, nil
+}

@@ -73,6 +73,20 @@ func TestStoreRestoreInvalidData(t *testing.T) {
 	}
 }
 
+func TestStoreEntries(t *testing.T) {
+	s := New()
+	if es := s.Entries(); len(es) != 0 {
+		t.Fatalf("expected empty entries")
+	}
+	cmd := Command{Op: OpPut, Key: S2B("a"), Data: []byte("b")}
+	b, _ := json.Marshal(cmd)
+	s.Apply(&raft.Log{Data: b})
+	es := s.Entries()
+	if len(es) != 1 || es[0].Key != "a" || string(es[0].Data) != "b" {
+		t.Fatalf("unexpected entries: %+v", es)
+	}
+}
+
 type errSink struct {
 	failWrite bool
 	failClose bool

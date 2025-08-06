@@ -197,6 +197,138 @@ func (x *GetResponse) GetData() []byte {
 	return nil
 }
 
+type ReportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportRequest) Reset() {
+	*x = ReportRequest{}
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportRequest) ProtoMessage() {}
+
+func (x *ReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportRequest.ProtoReflect.Descriptor instead.
+func (*ReportRequest) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{4}
+}
+
+type Metadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Metadata) Reset() {
+	*x = Metadata{}
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Metadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Metadata) ProtoMessage() {}
+
+func (x *Metadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
+func (*Metadata) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Metadata) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *Metadata) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type ReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entries       []*Metadata            `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportResponse) Reset() {
+	*x = ReportResponse{}
+	mi := &file_proto_dfs_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportResponse) ProtoMessage() {}
+
+func (x *ReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportResponse.ProtoReflect.Descriptor instead.
+func (*ReportResponse) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ReportResponse) GetEntries() []*Metadata {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
 var File_proto_dfs_proto protoreflect.FileDescriptor
 
 const file_proto_dfs_proto_rawDesc = "" +
@@ -211,10 +343,17 @@ const file_proto_dfs_proto_rawDesc = "" +
 	"GetRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"!\n" +
 	"\vGetResponse\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data2a\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"\x0f\n" +
+	"\rReportRequest\"0\n" +
+	"\bMetadata\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\"9\n" +
+	"\x0eReportResponse\x12'\n" +
+	"\aentries\x18\x01 \x03(\v2\r.dfs.MetadataR\aentries2\x94\x01\n" +
 	"\vFileService\x12(\n" +
 	"\x03Put\x12\x0f.dfs.PutRequest\x1a\x10.dfs.PutResponse\x12(\n" +
-	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponseB\tZ\a./protob\x06proto3"
+	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponse\x121\n" +
+	"\x06Report\x12\x12.dfs.ReportRequest\x1a\x13.dfs.ReportResponseB\tZ\a./protob\x06proto3"
 
 var (
 	file_proto_dfs_proto_rawDescOnce sync.Once
@@ -228,23 +367,29 @@ func file_proto_dfs_proto_rawDescGZIP() []byte {
 	return file_proto_dfs_proto_rawDescData
 }
 
-var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_dfs_proto_goTypes = []any{
-	(*PutRequest)(nil),  // 0: dfs.PutRequest
-	(*PutResponse)(nil), // 1: dfs.PutResponse
-	(*GetRequest)(nil),  // 2: dfs.GetRequest
-	(*GetResponse)(nil), // 3: dfs.GetResponse
+	(*PutRequest)(nil),     // 0: dfs.PutRequest
+	(*PutResponse)(nil),    // 1: dfs.PutResponse
+	(*GetRequest)(nil),     // 2: dfs.GetRequest
+	(*GetResponse)(nil),    // 3: dfs.GetResponse
+	(*ReportRequest)(nil),  // 4: dfs.ReportRequest
+	(*Metadata)(nil),       // 5: dfs.Metadata
+	(*ReportResponse)(nil), // 6: dfs.ReportResponse
 }
 var file_proto_dfs_proto_depIdxs = []int32{
-	0, // 0: dfs.FileService.Put:input_type -> dfs.PutRequest
-	2, // 1: dfs.FileService.Get:input_type -> dfs.GetRequest
-	1, // 2: dfs.FileService.Put:output_type -> dfs.PutResponse
-	3, // 3: dfs.FileService.Get:output_type -> dfs.GetResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	5, // 0: dfs.ReportResponse.entries:type_name -> dfs.Metadata
+	0, // 1: dfs.FileService.Put:input_type -> dfs.PutRequest
+	2, // 2: dfs.FileService.Get:input_type -> dfs.GetRequest
+	4, // 3: dfs.FileService.Report:input_type -> dfs.ReportRequest
+	1, // 4: dfs.FileService.Put:output_type -> dfs.PutResponse
+	3, // 5: dfs.FileService.Get:output_type -> dfs.GetResponse
+	6, // 6: dfs.FileService.Report:output_type -> dfs.ReportResponse
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_dfs_proto_init() }
@@ -258,7 +403,7 @@ func file_proto_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_dfs_proto_rawDesc), len(file_proto_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

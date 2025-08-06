@@ -2,15 +2,21 @@
 package node
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"dfs/internal/store"
+	pb "dfs/proto"
 )
 
 // Node wraps a Raft instance and its finite state machine store.
@@ -36,12 +42,20 @@ func New(id, bind, dataDir, peers string) (*Node, error) {
 		return nil, err
 	}
 
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return nil, err
+	}
 	snap, err := raft.NewFileSnapshotStore(dataDir, 1, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
-	logStore := raft.NewInmemStore()
-	stableStore := raft.NewInmemStore()
+	const boltFile = "raft.db"
+	bs, err := raftboltdb.NewBoltStore(filepath.Join(dataDir, boltFile))
+	if err != nil {
+		return nil, err
+	}
+	logStore := bs
+	stableStore := bs
 	fsm := store.New()
 	// Create the Raft system with our in-memory log and stable stores.
 	r, err := raft.NewRaft(cfg, fsm, logStore, stableStore, snap, transport)
@@ -89,3 +103,32 @@ func (n *Node) IsLeader() bool { return n.raft.State() == raft.Leader }
 
 // Leader returns the leader address.
 func (n *Node) Leader() raft.ServerAddress { return n.raft.Leader() }
+
+// Shutdown stops the Raft instance.
+func (n *Node) Shutdown() error { return n.raft.Shutdown().Error() }
+
+// Restore gathers metadata from the given peer gRPC addresses and
+// replicates it through the leader.
+func (n *Node) Restore(peers []string) error {
+	const dialTimeout = 5 * time.Second
+	for _, addr := range peers {
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+		conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		cancel()
+		if err != nil {
+			continue
+		}
+		client := pb.NewFileServiceClient(conn)
+		rctx, rcancel := context.WithTimeout(context.Background(), dialTimeout)
+		resp, err := client.Report(rctx, &pb.ReportRequest{})
+		rcancel()
+		conn.Close()
+		if err != nil {
+			continue
+		}
+		for _, e := range resp.Entries {
+			_ = n.Put(e.Key, e.Data)
+		}
+	}
+	return nil
+}

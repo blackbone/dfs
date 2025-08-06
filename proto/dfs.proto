@@ -5,6 +5,7 @@ option go_package = "./proto";
 service FileService {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Get(GetRequest) returns (GetResponse);
+  rpc Report(ReportRequest) returns (ReportResponse);
 }
 
 message PutRequest {
@@ -20,4 +21,15 @@ message GetRequest {
 
 message GetResponse {
   bytes data = 1;
+}
+
+message ReportRequest {}
+
+message Metadata {
+  string key = 1;
+  bytes data = 2;
+}
+
+message ReportResponse {
+  repeated Metadata entries = 1;
 }

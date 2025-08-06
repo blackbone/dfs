@@ -94,3 +94,38 @@ func BenchmarkTwoNodes(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkReport(b *testing.B) {
+	dir := b.TempDir()
+	const (
+		raftAddr = "127.0.0.1:12002"
+		grpcAddr = "127.0.0.1:13002"
+	)
+	_, stop, err := startNode(b, raftAddr, raftAddr, grpcAddr, "", dir)
+	if err != nil {
+		b.Fatalf("node: %v", err)
+	}
+	defer stop()
+
+	time.Sleep(2 * time.Second)
+
+	conn, err := grpc.Dial(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		b.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	client := pb.NewFileServiceClient(conn)
+	ctx := context.Background()
+	for i := 0; i < 100; i++ {
+		key := fmt.Sprintf("k-%d", i)
+		if _, err := client.Put(ctx, &pb.PutRequest{Key: key, Data: []byte("v")}); err != nil {
+			b.Fatalf("put: %v", err)
+		}
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := client.Report(ctx, &pb.ReportRequest{}); err != nil {
+			b.Fatalf("report: %v", err)
+		}
+	}
+}

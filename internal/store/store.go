@@ -94,6 +94,23 @@ func (s *Store) Get(key string) ([]byte, bool) {
 	return v, ok
 }
 
+// Entry represents a key/value pair stored in the metadata store.
+type Entry struct {
+	Key  string
+	Data []byte
+}
+
+// Entries returns a snapshot of all key/value pairs.
+func (s *Store) Entries() []Entry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	res := make([]Entry, 0, len(s.data))
+	for k, v := range s.data {
+		res = append(res, Entry{Key: k, Data: v})
+	}
+	return res
+}
+
 type snapshot struct {
 	data map[string][]byte
 }
