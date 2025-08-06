@@ -101,3 +101,37 @@ func TestNodeReplicationAndFollowerPut(t *testing.T) {
 	}
 	t.Fatalf("follower did not replicate value")
 }
+
+func TestNodeBackupRestore(t *testing.T) {
+	addr := getFreePort(t)
+	n, err := New("n1", addr, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	defer n.raft.Shutdown()
+	if waitLeader(n) != n {
+		t.Fatalf("leader not elected")
+	}
+	if err := n.Put("foo", []byte("bar")); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	data, err := n.Backup()
+	if err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	addr2 := getFreePort(t)
+	n2, err := New("n2", addr2, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new2: %v", err)
+	}
+	defer n2.raft.Shutdown()
+	if waitLeader(n2) != n2 {
+		t.Fatalf("n2 not leader")
+	}
+	if err := n2.Restore(data); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if v, ok := n2.Get("foo"); !ok || string(v) != "bar" {
+		t.Fatalf("expected bar, got %q ok=%v", v, ok)
+	}
+}

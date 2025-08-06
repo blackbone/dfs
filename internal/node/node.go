@@ -2,6 +2,7 @@
 package node
 
 import (
+	"bytes"
 	"encoding/json"
 	"net"
 	"os"
@@ -82,6 +83,20 @@ func (n *Node) Put(key string, data []byte) error {
 // Get returns value if present.
 func (n *Node) Get(key string) ([]byte, bool) {
 	return n.Store.Get(key)
+}
+
+// Backup returns a serialized copy of the store's data.
+func (n *Node) Backup() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := n.Store.Backup(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Restore loads serialized data into the store.
+func (n *Node) Restore(b []byte) error {
+	return n.Store.Load(bytes.NewReader(b))
 }
 
 // IsLeader reports whether this node is the cluster leader.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 
@@ -70,6 +71,46 @@ func TestStoreRestoreInvalidData(t *testing.T) {
 	s := New()
 	if err := s.Restore(io.NopCloser(bytes.NewBufferString("bad"))); err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+func TestStoreBackupLoad(t *testing.T) {
+	s := New()
+	for i := 0; i < 100; i++ {
+		k := fmt.Sprintf("k%d", i)
+		s.data[k] = []byte("v")
+	}
+	var buf bytes.Buffer
+	if err := s.Backup(&buf); err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	s2 := New()
+	if err := s2.Load(bytes.NewReader(buf.Bytes())); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if v, ok := s2.Get("k1"); !ok || string(v) != "v" {
+		t.Fatalf("expected v, got %q ok=%v", v, ok)
+	}
+}
+
+func TestStoreLoadInvalid(t *testing.T) {
+	s := New()
+	if err := s.Load(bytes.NewBufferString("bad")); err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func BenchmarkBackup(b *testing.B) {
+	s := New()
+	for i := 0; i < 1000; i++ {
+		k := fmt.Sprintf("k%d", i)
+		s.data[k] = []byte("v")
+	}
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+		if err := s.Backup(&buf); err != nil {
+			b.Fatalf("backup: %v", err)
+		}
 	}
 }
 

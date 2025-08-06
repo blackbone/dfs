@@ -5,6 +5,8 @@ option go_package = "./proto";
 service FileService {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Get(GetRequest) returns (GetResponse);
+  rpc Backup(BackupRequest) returns (BackupResponse);
+  rpc Restore(RestoreRequest) returns (RestoreResponse);
 }
 
 message PutRequest {
@@ -21,3 +23,15 @@ message GetRequest {
 message GetResponse {
   bytes data = 1;
 }
+
+message BackupRequest {}
+
+message BackupResponse {
+  bytes data = 1;
+}
+
+message RestoreRequest {
+  bytes data = 1;
+}
+
+message RestoreResponse {}

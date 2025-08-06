@@ -121,3 +121,64 @@ func TestServerPutNotLeader(t *testing.T) {
 		t.Fatalf("expected FailedPrecondition, got %v", err)
 	}
 }
+
+func TestServerBackupRestore(t *testing.T) {
+	addr := freeAddr(t)
+	n, err := node.New("n1", addr, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("new node: %v", err)
+	}
+	if waitLeader(n) == nil {
+		t.Fatalf("node not leader")
+	}
+	client, cleanup := startGRPC(t, n)
+	defer cleanup()
+
+	ctx := context.Background()
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "foo", Data: []byte("bar")}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	bResp, err := client.Backup(ctx, &pb.BackupRequest{})
+	if err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "foo", Data: []byte("baz")}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if _, err := client.Restore(ctx, &pb.RestoreRequest{Data: bResp.Data}); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	resp, err := client.Get(ctx, &pb.GetRequest{Key: "foo"})
+	if err != nil || string(resp.Data) != "bar" {
+		t.Fatalf("get: %v resp=%q", err, resp.Data)
+	}
+}
+
+func TestServerRestoreNotLeader(t *testing.T) {
+	addr1 := freeAddr(t)
+	addr2 := freeAddr(t)
+	n1, err := node.New(addr1, addr1, t.TempDir(), addr2)
+	if err != nil {
+		t.Fatalf("n1: %v", err)
+	}
+	n2, err := node.New(addr2, addr2, t.TempDir(), addr1)
+	if err != nil {
+		t.Fatalf("n2: %v", err)
+	}
+	leader := waitLeader(n1, n2)
+	if leader == nil {
+		t.Fatalf("no leader")
+	}
+	var follower *node.Node
+	if leader == n1 {
+		follower = n2
+	} else {
+		follower = n1
+	}
+	client, cleanup := startGRPC(t, follower)
+	defer cleanup()
+	ctx := context.Background()
+	if _, err := client.Restore(ctx, &pb.RestoreRequest{Data: []byte("{}")}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("expected FailedPrecondition, got %v", err)
+	}
+}

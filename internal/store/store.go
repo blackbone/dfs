@@ -86,6 +86,25 @@ func (s *Store) Restore(rc io.ReadCloser) error {
 	return nil
 }
 
+// Backup writes the entire store to w as JSON.
+func (s *Store) Backup(w io.Writer) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return json.NewEncoder(w).Encode(s.data)
+}
+
+// Load replaces the store's contents with data read from r.
+func (s *Store) Load(r io.Reader) error {
+	data := make(map[string][]byte)
+	if err := json.NewDecoder(r).Decode(&data); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.data = data
+	s.mu.Unlock()
+	return nil
+}
+
 // Get returns value for key.
 func (s *Store) Get(key string) ([]byte, bool) {
 	s.mu.RLock()
