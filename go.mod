@@ -5,6 +5,8 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
+	bazil.org/fuse v0.0.0-20230120002735-62a210ff1fd5
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/hashicorp/raft v1.5.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6

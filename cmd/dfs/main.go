@@ -10,6 +10,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	"dfs"
+	dfsfs "dfs/internal/fusefs"
 	"dfs/internal/node"
 	"dfs/internal/server"
 	pb "dfs/proto"
@@ -52,6 +54,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("node: %v", err)
 	}
+	dfs.SetNode(n)
+
+	// Start FUSE filesystem and cache watcher.
+	go func() {
+		if err := dfsfs.Mount("/mnt/dfs", "/mnt/hostfs"); err != nil {
+			log.Fatalf("mount: %v", err)
+		}
+	}()
+	go dfsfs.Watch("/mnt/hostfs")
 
 	lis, err := net.Listen("tcp", gAddr)
 	if err != nil {
