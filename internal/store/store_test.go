@@ -20,7 +20,7 @@ func (m *memSink) Close() error  { return nil }
 
 func TestStoreApplyAndGet(t *testing.T) {
 	s := New()
-	cmd := Command{Op: "put", Key: "foo", Data: []byte("bar")}
+	cmd := Command{Op: OpPut, Key: S2B("foo"), Data: []byte("bar")}
 	b, err := json.Marshal(cmd)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -32,7 +32,7 @@ func TestStoreApplyAndGet(t *testing.T) {
 	if !ok || string(v) != "bar" {
 		t.Fatalf("expected bar, got %q ok=%v", v, ok)
 	}
-	cmd = Command{Op: "delete", Key: "foo"}
+	cmd = Command{Op: OpDelete, Key: S2B("foo")}
 	b, _ = json.Marshal(cmd)
 	if res := s.Apply(&raft.Log{Data: b}); res != nil {
 		t.Fatalf("apply delete: %v", res)
@@ -44,7 +44,7 @@ func TestStoreApplyAndGet(t *testing.T) {
 
 func TestStoreSnapshotRestore(t *testing.T) {
 	s := New()
-	b, _ := json.Marshal(Command{Op: "put", Key: "foo", Data: []byte("bar")})
+	b, _ := json.Marshal(Command{Op: OpPut, Key: S2B("foo"), Data: []byte("bar")})
 	s.Apply(&raft.Log{Data: b})
 
 	snap, err := s.Snapshot()

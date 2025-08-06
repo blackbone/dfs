@@ -6,16 +6,31 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
+	"unsafe"
 
 	"github.com/hashicorp/raft"
 )
 
+// Op represents a store operation.
+type Op uint8
+
+const (
+	OpPut Op = iota
+	OpDelete
+)
+
 // Command represents a replicated state machine command.
 type Command struct {
-	Op   string `json:"op"`
-	Key  string `json:"key"`
+	Op   Op     `json:"op"`
+	Key  []byte `json:"key"`
 	Data []byte `json:"data,omitempty"`
 }
+
+// S2B converts a string to a byte slice without allocation.
+func S2B(s string) []byte { return *(*[]byte)(unsafe.Pointer(&s)) }
+
+// B2S converts a byte slice to a string without allocation.
+func B2S(b []byte) string { return *(*string)(unsafe.Pointer(&b)) }
 
 // Store is a simple in-memory key/value store implementing raft.FSM.
 type Store struct {
@@ -33,14 +48,15 @@ func (s *Store) Apply(log *raft.Log) interface{} {
 	if err := json.Unmarshal(log.Data, &c); err != nil {
 		return err
 	}
+	key := B2S(c.Key)
 	switch c.Op {
-	case "put":
+	case OpPut:
 		s.mu.Lock()
-		s.data[c.Key] = c.Data
+		s.data[key] = c.Data
 		s.mu.Unlock()
-	case "delete":
+	case OpDelete:
 		s.mu.Lock()
-		delete(s.data, c.Key)
+		delete(s.data, key)
 		s.mu.Unlock()
 	}
 	return nil
