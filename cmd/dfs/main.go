@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -31,6 +32,9 @@ func main() {
 	const (
 		defaultRaftPort = 12000
 		defaultGRPCPort = 13000
+		mountPoint      = "/mnt/dfs"
+		cacheDir        = "/mnt/hostfs"
+		checkInterval   = time.Minute
 	)
 
 	cfg, err := config.Load("")
@@ -55,17 +59,18 @@ func main() {
 	}
 	dfs.SetNode(n)
 
-	// Start FUSE filesystem and cache watcher.
+	// Start FUSE filesystem, cache watcher and consistency checker.
 	go func() {
-		if err := dfsfs.Mount("/mnt/dfs", "/mnt/hostfs"); err != nil {
+		if err := dfsfs.Mount(mountPoint, cacheDir); err != nil {
 			log.Fatalf("mount: %v", err)
 		}
 	}()
 	go func() {
-		if err := dfsfs.Watch(context.Background(), "/mnt/hostfs"); err != nil {
+		if err := dfsfs.Watch(context.Background(), cacheDir); err != nil {
 			log.Fatalf("watch: %v", err)
 		}
 	}()
+	go dfsfs.Check(context.Background(), cacheDir, checkInterval)
 
 	lis, err := net.Listen("tcp", gAddr)
 	if err != nil {

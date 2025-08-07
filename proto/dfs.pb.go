@@ -197,6 +197,86 @@ func (x *GetResponse) GetData() []byte {
 	return nil
 }
 
+type DeleteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteRequest) Reset() {
+	*x = DeleteRequest{}
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteRequest) ProtoMessage() {}
+
+func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
+func (*DeleteRequest) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DeleteRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type DeleteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteResponse) Reset() {
+	*x = DeleteResponse{}
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteResponse) ProtoMessage() {}
+
+func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_dfs_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
+func (*DeleteResponse) Descriptor() ([]byte, []int) {
+	return file_proto_dfs_proto_rawDescGZIP(), []int{5}
+}
+
 type AddPeerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -207,7 +287,7 @@ type AddPeerRequest struct {
 
 func (x *AddPeerRequest) Reset() {
 	*x = AddPeerRequest{}
-	mi := &file_proto_dfs_proto_msgTypes[4]
+	mi := &file_proto_dfs_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +299,7 @@ func (x *AddPeerRequest) String() string {
 func (*AddPeerRequest) ProtoMessage() {}
 
 func (x *AddPeerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[4]
+	mi := &file_proto_dfs_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +312,7 @@ func (x *AddPeerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddPeerRequest.ProtoReflect.Descriptor instead.
 func (*AddPeerRequest) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{4}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AddPeerRequest) GetId() string {
@@ -257,7 +337,7 @@ type AddPeerResponse struct {
 
 func (x *AddPeerResponse) Reset() {
 	*x = AddPeerResponse{}
-	mi := &file_proto_dfs_proto_msgTypes[5]
+	mi := &file_proto_dfs_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +349,7 @@ func (x *AddPeerResponse) String() string {
 func (*AddPeerResponse) ProtoMessage() {}
 
 func (x *AddPeerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[5]
+	mi := &file_proto_dfs_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +362,7 @@ func (x *AddPeerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddPeerResponse.ProtoReflect.Descriptor instead.
 func (*AddPeerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{5}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{7}
 }
 
 type RemovePeerRequest struct {
@@ -294,7 +374,7 @@ type RemovePeerRequest struct {
 
 func (x *RemovePeerRequest) Reset() {
 	*x = RemovePeerRequest{}
-	mi := &file_proto_dfs_proto_msgTypes[6]
+	mi := &file_proto_dfs_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +386,7 @@ func (x *RemovePeerRequest) String() string {
 func (*RemovePeerRequest) ProtoMessage() {}
 
 func (x *RemovePeerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[6]
+	mi := &file_proto_dfs_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +399,7 @@ func (x *RemovePeerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemovePeerRequest.ProtoReflect.Descriptor instead.
 func (*RemovePeerRequest) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{6}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RemovePeerRequest) GetId() string {
@@ -337,7 +417,7 @@ type RemovePeerResponse struct {
 
 func (x *RemovePeerResponse) Reset() {
 	*x = RemovePeerResponse{}
-	mi := &file_proto_dfs_proto_msgTypes[7]
+	mi := &file_proto_dfs_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -349,7 +429,7 @@ func (x *RemovePeerResponse) String() string {
 func (*RemovePeerResponse) ProtoMessage() {}
 
 func (x *RemovePeerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[7]
+	mi := &file_proto_dfs_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +442,7 @@ func (x *RemovePeerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemovePeerResponse.ProtoReflect.Descriptor instead.
 func (*RemovePeerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{7}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{9}
 }
 
 type Metadata struct {
@@ -378,7 +458,7 @@ type Metadata struct {
 
 func (x *Metadata) Reset() {
 	*x = Metadata{}
-	mi := &file_proto_dfs_proto_msgTypes[8]
+	mi := &file_proto_dfs_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -390,7 +470,7 @@ func (x *Metadata) String() string {
 func (*Metadata) ProtoMessage() {}
 
 func (x *Metadata) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[8]
+	mi := &file_proto_dfs_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -403,7 +483,7 @@ func (x *Metadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{8}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Metadata) GetPath() string {
@@ -450,7 +530,7 @@ type SyncMetadataRequest struct {
 
 func (x *SyncMetadataRequest) Reset() {
 	*x = SyncMetadataRequest{}
-	mi := &file_proto_dfs_proto_msgTypes[9]
+	mi := &file_proto_dfs_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -462,7 +542,7 @@ func (x *SyncMetadataRequest) String() string {
 func (*SyncMetadataRequest) ProtoMessage() {}
 
 func (x *SyncMetadataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[9]
+	mi := &file_proto_dfs_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -475,7 +555,7 @@ func (x *SyncMetadataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncMetadataRequest.ProtoReflect.Descriptor instead.
 func (*SyncMetadataRequest) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{9}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SyncMetadataRequest) GetMeta() *Metadata {
@@ -493,7 +573,7 @@ type SyncMetadataResponse struct {
 
 func (x *SyncMetadataResponse) Reset() {
 	*x = SyncMetadataResponse{}
-	mi := &file_proto_dfs_proto_msgTypes[10]
+	mi := &file_proto_dfs_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +585,7 @@ func (x *SyncMetadataResponse) String() string {
 func (*SyncMetadataResponse) ProtoMessage() {}
 
 func (x *SyncMetadataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_dfs_proto_msgTypes[10]
+	mi := &file_proto_dfs_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +598,7 @@ func (x *SyncMetadataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncMetadataResponse.ProtoReflect.Descriptor instead.
 func (*SyncMetadataResponse) Descriptor() ([]byte, []int) {
-	return file_proto_dfs_proto_rawDescGZIP(), []int{10}
+	return file_proto_dfs_proto_rawDescGZIP(), []int{12}
 }
 
 var File_proto_dfs_proto protoreflect.FileDescriptor
@@ -535,7 +615,10 @@ const file_proto_dfs_proto_rawDesc = "" +
 	"GetRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"!\n" +
 	"\vGetResponse\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data\":\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"!\n" +
+	"\rDeleteRequest\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x10\n" +
+	"\x0eDeleteResponse\":\n" +
 	"\x0eAddPeerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\"\x11\n" +
@@ -551,10 +634,11 @@ const file_proto_dfs_proto_rawDesc = "" +
 	"\adeleted\x18\x05 \x01(\bR\adeleted\"8\n" +
 	"\x13SyncMetadataRequest\x12!\n" +
 	"\x04meta\x18\x01 \x01(\v2\r.dfs.MetadataR\x04meta\"\x16\n" +
-	"\x14SyncMetadataResponse2\x9b\x02\n" +
+	"\x14SyncMetadataResponse2\xce\x02\n" +
 	"\vFileService\x12(\n" +
 	"\x03Put\x12\x0f.dfs.PutRequest\x1a\x10.dfs.PutResponse\x12(\n" +
-	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponse\x124\n" +
+	"\x03Get\x12\x0f.dfs.GetRequest\x1a\x10.dfs.GetResponse\x121\n" +
+	"\x06Delete\x12\x12.dfs.DeleteRequest\x1a\x13.dfs.DeleteResponse\x124\n" +
 	"\aAddPeer\x12\x13.dfs.AddPeerRequest\x1a\x14.dfs.AddPeerResponse\x12=\n" +
 	"\n" +
 	"RemovePeer\x12\x16.dfs.RemovePeerRequest\x1a\x17.dfs.RemovePeerResponse\x12C\n" +
@@ -572,34 +656,38 @@ func file_proto_dfs_proto_rawDescGZIP() []byte {
 	return file_proto_dfs_proto_rawDescData
 }
 
-var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_proto_dfs_proto_goTypes = []any{
 	(*PutRequest)(nil),           // 0: dfs.PutRequest
 	(*PutResponse)(nil),          // 1: dfs.PutResponse
 	(*GetRequest)(nil),           // 2: dfs.GetRequest
 	(*GetResponse)(nil),          // 3: dfs.GetResponse
-	(*AddPeerRequest)(nil),       // 4: dfs.AddPeerRequest
-	(*AddPeerResponse)(nil),      // 5: dfs.AddPeerResponse
-	(*RemovePeerRequest)(nil),    // 6: dfs.RemovePeerRequest
-	(*RemovePeerResponse)(nil),   // 7: dfs.RemovePeerResponse
-	(*Metadata)(nil),             // 8: dfs.Metadata
-	(*SyncMetadataRequest)(nil),  // 9: dfs.SyncMetadataRequest
-	(*SyncMetadataResponse)(nil), // 10: dfs.SyncMetadataResponse
+	(*DeleteRequest)(nil),        // 4: dfs.DeleteRequest
+	(*DeleteResponse)(nil),       // 5: dfs.DeleteResponse
+	(*AddPeerRequest)(nil),       // 6: dfs.AddPeerRequest
+	(*AddPeerResponse)(nil),      // 7: dfs.AddPeerResponse
+	(*RemovePeerRequest)(nil),    // 8: dfs.RemovePeerRequest
+	(*RemovePeerResponse)(nil),   // 9: dfs.RemovePeerResponse
+	(*Metadata)(nil),             // 10: dfs.Metadata
+	(*SyncMetadataRequest)(nil),  // 11: dfs.SyncMetadataRequest
+	(*SyncMetadataResponse)(nil), // 12: dfs.SyncMetadataResponse
 }
 var file_proto_dfs_proto_depIdxs = []int32{
-	8,  // 0: dfs.SyncMetadataRequest.meta:type_name -> dfs.Metadata
+	10, // 0: dfs.SyncMetadataRequest.meta:type_name -> dfs.Metadata
 	0,  // 1: dfs.FileService.Put:input_type -> dfs.PutRequest
 	2,  // 2: dfs.FileService.Get:input_type -> dfs.GetRequest
-	4,  // 3: dfs.FileService.AddPeer:input_type -> dfs.AddPeerRequest
-	6,  // 4: dfs.FileService.RemovePeer:input_type -> dfs.RemovePeerRequest
-	9,  // 5: dfs.FileService.SyncMetadata:input_type -> dfs.SyncMetadataRequest
-	1,  // 6: dfs.FileService.Put:output_type -> dfs.PutResponse
-	3,  // 7: dfs.FileService.Get:output_type -> dfs.GetResponse
-	5,  // 8: dfs.FileService.AddPeer:output_type -> dfs.AddPeerResponse
-	7,  // 9: dfs.FileService.RemovePeer:output_type -> dfs.RemovePeerResponse
-	10, // 10: dfs.FileService.SyncMetadata:output_type -> dfs.SyncMetadataResponse
-	6,  // [6:11] is the sub-list for method output_type
-	1,  // [1:6] is the sub-list for method input_type
+	4,  // 3: dfs.FileService.Delete:input_type -> dfs.DeleteRequest
+	6,  // 4: dfs.FileService.AddPeer:input_type -> dfs.AddPeerRequest
+	8,  // 5: dfs.FileService.RemovePeer:input_type -> dfs.RemovePeerRequest
+	11, // 6: dfs.FileService.SyncMetadata:input_type -> dfs.SyncMetadataRequest
+	1,  // 7: dfs.FileService.Put:output_type -> dfs.PutResponse
+	3,  // 8: dfs.FileService.Get:output_type -> dfs.GetResponse
+	5,  // 9: dfs.FileService.Delete:output_type -> dfs.DeleteResponse
+	7,  // 10: dfs.FileService.AddPeer:output_type -> dfs.AddPeerResponse
+	9,  // 11: dfs.FileService.RemovePeer:output_type -> dfs.RemovePeerResponse
+	12, // 12: dfs.FileService.SyncMetadata:output_type -> dfs.SyncMetadataResponse
+	7,  // [7:13] is the sub-list for method output_type
+	1,  // [1:7] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -616,7 +704,7 @@ func file_proto_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_dfs_proto_rawDesc), len(file_proto_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -156,6 +156,18 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	return res, nil
 }
 
+// Remove deletes the local cache copy of the file.
+func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	full := filepath.Join(d.path, req.Name)
+	disk := filepath.Join(d.fs.cacheDir, full)
+	d.fs.mu.Lock()
+	delete(d.fs.mem, full)
+	d.fs.mu.Unlock()
+	os.Remove(disk)
+	os.Remove(disk + verSuffix)
+	return nil
+}
+
 // File represents a file node.
 type File struct {
 	fs   *FS
