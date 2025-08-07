@@ -98,6 +98,29 @@ func TestServerPutGet(t *testing.T) {
 	}
 }
 
+func TestServerDelete(t *testing.T) {
+	addr := freeAddr(t)
+	n, err := node.New("n1", addr, t.TempDir(), "", true)
+	if err != nil {
+		t.Fatalf("new node: %v", err)
+	}
+	if waitLeader(n) == nil {
+		t.Fatalf("node not leader")
+	}
+	client, cleanup := startGRPC(t, n)
+	defer cleanup()
+	ctx := context.Background()
+	if _, err := client.Put(ctx, &pb.PutRequest{Key: "foo", Data: []byte("bar")}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if _, err := client.Delete(ctx, &pb.DeleteRequest{Key: "foo"}); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := client.Get(ctx, &pb.GetRequest{Key: "foo"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("expected not found, got %v", err)
+	}
+}
+
 func TestServerPutNotLeader(t *testing.T) {
 	addr1 := freeAddr(t)
 	addr2 := freeAddr(t)

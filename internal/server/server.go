@@ -50,6 +50,23 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	return &pb.GetResponse{Data: data}, nil
 }
 
+// Delete removes a key/value pair and its metadata.
+func (s *Server) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
+	if !s.node.IsLeader() {
+		return nil, status.Errorf(codes.FailedPrecondition, errNotLeader, s.node.Leader())
+	}
+	var ver uint64
+	if e, ok := s.node.Meta.Get(req.Key); ok {
+		ver = e.Version
+	}
+	ver++
+	if err := s.node.Delete(req.Key); err != nil {
+		return nil, status.Errorf(codes.Internal, errInternal, err)
+	}
+	s.node.Meta.Delete(req.Key, ver)
+	return &pb.DeleteResponse{}, nil
+}
+
 // AddPeer adds a node to the cluster.
 func (s *Server) AddPeer(ctx context.Context, req *pb.AddPeerRequest) (*pb.AddPeerResponse, error) {
 	if !s.node.IsLeader() {
