@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"bazil.org/fuse"
@@ -24,6 +25,8 @@ var (
 	}
 )
 
+const verSuffix = ".ver"
+
 type watcher interface {
 	Add(string) error
 	Close() error
@@ -38,16 +41,21 @@ func (w *fsWatcher) Errors() <-chan error          { return w.Watcher.Errors }
 
 // FS implements a simple read-only FUSE filesystem backed by a cache
 // directory and the DFS for missing files.
+type cacheEntry struct {
+	data    []byte
+	version uint64
+}
+
 type FS struct {
 	cacheDir string
 
 	mu  sync.RWMutex
-	mem map[string][]byte
+	mem map[string]cacheEntry
 }
 
 // New returns a new filesystem.
 func New(cacheDir string) *FS {
-	return &FS{cacheDir: cacheDir, mem: make(map[string][]byte)}
+	return &FS{cacheDir: cacheDir, mem: make(map[string]cacheEntry)}
 }
 
 // Root returns the root directory node.
@@ -58,41 +66,51 @@ func (f *FS) Root() (bazilfs.Node, error) {
 // ensure returns file data for the given path, loading it from the cache
 // or DFS as needed.
 func (f *FS) ensure(path string) ([]byte, error) {
-	f.mu.RLock()
-	data, ok := f.mem[path]
-	f.mu.RUnlock()
-	if ok {
-		return data, nil
-	}
-
-	// Check on-disk cache
-	diskPath := filepath.Join(f.cacheDir, path)
-	data, err := os.ReadFile(diskPath)
-	if err == nil {
+	meta, err := dfs.GetMetadata(path)
+	if err != nil {
 		f.mu.Lock()
-		f.mem[path] = data
+		delete(f.mem, path)
 		f.mu.Unlock()
-		return data, nil
+		diskPath := filepath.Join(f.cacheDir, path)
+		os.Remove(diskPath)
+		os.Remove(diskPath + verSuffix)
+		return nil, err
 	}
-
-	// Fetch from DFS
+	f.mu.RLock()
+	ce, ok := f.mem[path]
+	f.mu.RUnlock()
+	if ok && ce.version == meta.Version {
+		return ce.data, nil
+	}
+	diskPath := filepath.Join(f.cacheDir, path)
+	verPath := diskPath + verSuffix
+	if data, err := os.ReadFile(diskPath); err == nil {
+		if vb, err := os.ReadFile(verPath); err == nil {
+			if v, err := strconv.ParseUint(string(vb), 10, 64); err == nil && v == meta.Version {
+				f.mu.Lock()
+				f.mem[path] = cacheEntry{data: data, version: v}
+				f.mu.Unlock()
+				return data, nil
+			}
+		}
+		os.Remove(diskPath)
+		os.Remove(verPath)
+	}
 	log.Printf("fetching %s from DFS", path)
-	data, err = dfs.GetFile(path)
+	data, err := dfs.GetFile(path)
 	if err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
-	f.mem[path] = data
+	f.mem[path] = cacheEntry{data: data, version: meta.Version}
 	f.mu.Unlock()
-
-	// Save to cache asynchronously
 	go func() {
 		if err := os.MkdirAll(filepath.Dir(diskPath), 0o755); err != nil {
 			return
 		}
 		_ = os.WriteFile(diskPath, data, 0o644)
+		_ = os.WriteFile(verPath, []byte(strconv.FormatUint(meta.Version, 10)), 0o644)
 	}()
-
 	return data, nil
 }
 

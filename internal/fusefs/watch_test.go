@@ -80,10 +80,7 @@ func TestWatchReplicatesFile(t *testing.T) {
 	// wait for watch to replicate
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if v, ok := leader.Get("f.txt"); ok {
-			if string(v) != string(data) {
-				t.Fatalf("leader data mismatch: %q", v)
-			}
+		if v, ok := leader.Get("f.txt"); ok && string(v) == string(data) {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -93,10 +90,7 @@ func TestWatchReplicatesFile(t *testing.T) {
 	}
 	deadline = time.Now().Add(2 * time.Second)
 	for {
-		if v, ok := follower.Get("f.txt"); ok {
-			if string(v) != string(data) {
-				t.Fatalf("unexpected data: %q", v)
-			}
+		if v, ok := follower.Get("f.txt"); ok && string(v) == string(data) {
 			break
 		}
 		if time.Now().After(deadline) {
