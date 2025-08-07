@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Program dfs starts a single node of the distributed key/value store.
 package main
 
