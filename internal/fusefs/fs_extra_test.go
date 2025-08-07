@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/raft"
 
 	"dfs"
+	"dfs/internal/metastore"
 	"dfs/internal/node"
 	"dfs/internal/store"
 )
@@ -51,10 +52,12 @@ func TestFSEnsureErrorPaths(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 	st := store.New()
+	meta := metastore.New()
 	cmd := store.Command{Op: store.OpPut, Key: store.S2B("a/b"), Data: []byte(dataValue)}
 	b, _ := json.Marshal(cmd)
 	st.Apply(&raft.Log{Data: b})
-	dfs.SetNode(&node.Node{Store: st})
+	meta.Sync(&metastore.Entry{Path: "a/b", Version: 1})
+	dfs.SetNode(&node.Node{Store: st, Meta: meta})
 	if err := os.WriteFile(filepath.Join(dir, "a"), []byte(dataValue), 0o644); err != nil {
 		t.Fatalf("prep: %v", err)
 	}

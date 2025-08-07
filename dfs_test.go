@@ -74,3 +74,25 @@ func TestSetNodeAndFileOps(t *testing.T) {
 		t.Fatalf("expected not exist, got %v", err)
 	}
 }
+
+func TestDeleteFile(t *testing.T) {
+	addr := freePort(t)
+	n, err := node.New(sampleID, addr, t.TempDir(), emptyString, true)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	SetNode(n)
+	waitLeader(t, n)
+	if err := PutFile(sampleKey, []byte(sampleVal)); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if err := DeleteFile(sampleKey); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := GetFile(sampleKey); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected not exist, got %v", err)
+	}
+	if _, err := GetMetadata(sampleKey); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected meta missing, got %v", err)
+	}
+}

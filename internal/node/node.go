@@ -99,6 +99,17 @@ func (n *Node) Get(key string) ([]byte, bool) {
 	return n.Store.Get(key)
 }
 
+// Delete removes key through Raft.
+func (n *Node) Delete(key string) error {
+	c := &store.Command{Op: store.OpDelete, Key: store.S2B(key)}
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	f := n.raft.Apply(b, applyTimeout)
+	return f.Error()
+}
+
 // IsLeader reports whether this node is the cluster leader.
 func (n *Node) IsLeader() bool { return n.raft.State() == raft.Leader }
 
