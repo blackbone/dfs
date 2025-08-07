@@ -2,7 +2,6 @@ package fusefs
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,12 +12,10 @@ import (
 	"bazil.org/fuse"
 	bazilfs "bazil.org/fuse/fs"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hashicorp/raft"
 
 	"dfs"
 	"dfs/internal/metastore"
 	"dfs/internal/node"
-	"dfs/internal/store"
 )
 
 // fakeWatcher implements watcher for testing.
@@ -51,13 +48,10 @@ func TestFSEnsureErrorPaths(t *testing.T) {
 	if _, err := fs.ensure("missing"); err == nil {
 		t.Fatalf("expected error")
 	}
-	st := store.New()
-	meta := metastore.New()
-	cmd := store.Command{Op: store.OpPut, Key: store.S2B("a/b"), Data: []byte(dataValue)}
-	b, _ := json.Marshal(cmd)
-	st.Apply(&raft.Log{Data: b})
-	meta.Sync(&metastore.Entry{Path: "a/b", Version: 1})
-	dfs.SetNode(&node.Node{Store: st, Meta: meta})
+	nd := node.NewInmem()
+	nd.Put("a/b", []byte(dataValue))
+	nd.Meta.Sync(&metastore.Entry{Path: "a/b", Version: 1})
+	dfs.SetNode(nd)
 	if err := os.WriteFile(filepath.Join(dir, "a"), []byte(dataValue), 0o644); err != nil {
 		t.Fatalf("prep: %v", err)
 	}
@@ -171,7 +165,7 @@ func TestWatchFlows(t *testing.T) {
 	time.Sleep(time.Duration(waitMS) * time.Millisecond)
 	fw.Close()
 	cancel()
-	if err := <-done; err != nil && err != context.Canceled {
+	if err := <-done; err != putErr {
 		t.Fatalf("watch: %v", err)
 	}
 }
