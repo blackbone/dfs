@@ -15,6 +15,12 @@ import (
 	pb "dfs/proto"
 )
 
+const (
+	benchKeyFmt = "bench-%d"
+	benchData   = "data"
+	benchSleep  = 200 * time.Millisecond
+)
+
 // startNode creates a node and gRPC server listening on the given addresses.
 func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
 	tb.Helper()
@@ -79,18 +85,89 @@ func BenchmarkTwoNodes(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		key := fmt.Sprintf("bench-%d", i)
-		if _, err := leader.Put(ctx, &pb.PutRequest{Key: key, Data: []byte("data")}); err != nil {
+		key := fmt.Sprintf(benchKeyFmt, i)
+		if _, err := leader.Put(ctx, &pb.PutRequest{Key: key, Data: []byte(benchData)}); err != nil {
 			b.Fatalf("put: %v", err)
 		}
-		// Allow time for the entry to be replicated and applied on the peer.
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(benchSleep)
 		resp, err := follower.Get(ctx, &pb.GetRequest{Key: key})
 		if err != nil {
 			b.Fatalf("get: %v", err)
 		}
-		if string(resp.Data) != "data" {
+		if string(resp.Data) != benchData {
 			b.Fatalf("unexpected data: %s", resp.Data)
+		}
+	}
+}
+
+func BenchmarkThreeNodes(b *testing.B) {
+	dir1 := b.TempDir()
+	dir2 := b.TempDir()
+	dir3 := b.TempDir()
+
+	_, stop1, err := startNode(b, "127.0.0.1:12010", "127.0.0.1:12010", "127.0.0.1:13010", "127.0.0.1:12011,127.0.0.1:12012", dir1, true)
+	if err != nil {
+		b.Fatalf("node1: %v", err)
+	}
+	defer stop1()
+	n2, stop2, err := startNode(b, "127.0.0.1:12011", "127.0.0.1:12011", "127.0.0.1:13011", "127.0.0.1:12010,127.0.0.1:12012", dir2, true)
+	if err != nil {
+		b.Fatalf("node2: %v", err)
+	}
+	defer stop2()
+	n3, stop3, err := startNode(b, "127.0.0.1:12012", "127.0.0.1:12012", "127.0.0.1:13012", "127.0.0.1:12010,127.0.0.1:12011", dir3, true)
+	if err != nil {
+		b.Fatalf("node3: %v", err)
+	}
+	defer stop3()
+
+	time.Sleep(2 * time.Second)
+
+	conn1, err := grpc.Dial("127.0.0.1:13010", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		b.Fatalf("dial1: %v", err)
+	}
+	defer conn1.Close()
+	client1 := pb.NewFileServiceClient(conn1)
+
+	conn2, err := grpc.Dial("127.0.0.1:13011", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		b.Fatalf("dial2: %v", err)
+	}
+	defer conn2.Close()
+	client2 := pb.NewFileServiceClient(conn2)
+
+	conn3, err := grpc.Dial("127.0.0.1:13012", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		b.Fatalf("dial3: %v", err)
+	}
+	defer conn3.Close()
+	client3 := pb.NewFileServiceClient(conn3)
+
+	ctx := context.Background()
+
+	leader, f1, f2 := client1, client2, client3
+	if n2.IsLeader() {
+		leader, f1, f2 = client2, client1, client3
+	}
+	if n3.IsLeader() {
+		leader, f1, f2 = client3, client1, client2
+	}
+
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf(benchKeyFmt, i)
+		if _, err := leader.Put(ctx, &pb.PutRequest{Key: key, Data: []byte(benchData)}); err != nil {
+			b.Fatalf("put: %v", err)
+		}
+		time.Sleep(benchSleep)
+		for _, follower := range []pb.FileServiceClient{f1, f2} {
+			resp, err := follower.Get(ctx, &pb.GetRequest{Key: key})
+			if err != nil {
+				b.Fatalf("get: %v", err)
+			}
+			if string(resp.Data) != benchData {
+				b.Fatalf("unexpected data: %s", resp.Data)
+			}
 		}
 	}
 }
