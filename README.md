@@ -3,7 +3,8 @@
 `dfs` is a tiny distributed key/value store built on top of
 [Hashicorp Raft](https://github.com/hashicorp/raft) for consensus and
 gRPC for the public API. It is intended as a learning example rather
-than a production system.
+than a production system. The project targets Unix-like environments
+with FUSE; Windows platforms are unsupported.
 
 ## Building
 
