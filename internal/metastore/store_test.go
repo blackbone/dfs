@@ -64,3 +64,12 @@ func TestStoreConcurrent(t *testing.T) {
 		t.Fatalf("expected %d items, got %d", goroutines*items, n)
 	}
 }
+
+func TestStoreGC(t *testing.T) {
+	s := New()
+	s.Delete(pathA, 1)
+	s.GC()
+	if _, ok := s.data[pathA]; ok {
+		t.Fatalf("expected entry removed")
+	}
+}

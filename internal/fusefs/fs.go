@@ -244,7 +244,7 @@ func Watch(ctx context.Context, cacheDir string) error {
 						if err == nil {
 							if data, err := os.ReadFile(ev.Name); err == nil {
 								if err := putFileFn(rel, data); err != nil {
-									log.Printf("put file: %v", err)
+									return err
 								}
 							}
 						}

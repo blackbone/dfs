@@ -95,3 +95,14 @@ func (s *Store) List() []Entry {
 	s.mu.RUnlock()
 	return res
 }
+
+// GC removes entries marked deleted.
+func (s *Store) GC() {
+	s.mu.Lock()
+	for p, e := range s.data {
+		if e.Deleted {
+			delete(s.data, p)
+		}
+	}
+	s.mu.Unlock()
+}

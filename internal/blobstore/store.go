@@ -44,6 +44,34 @@ func (s *Store) Get(path string, version uint64) ([]byte, error) {
 	return os.ReadFile(s.blobPath(path, version))
 }
 
+// GC removes blob files not present in keep map.
+func (s *Store) GC(keep map[string]uint64) {
+	filepath.WalkDir(s.root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(s.root, p)
+		if err != nil {
+			return nil
+		}
+		parts := strings.Split(rel, string(sep))
+		if len(parts) != 2 {
+			os.Remove(p)
+			return nil
+		}
+		verStr := strings.TrimPrefix(parts[1], string(verPrefix))
+		ver, err := strconv.ParseUint(verStr, 10, 64)
+		if err != nil {
+			os.Remove(p)
+			return nil
+		}
+		if v, ok := keep[parts[0]]; !ok || v != ver {
+			os.Remove(p)
+		}
+		return nil
+	})
+}
+
 func (s *Store) blobPath(path string, version uint64) string {
 	trimmed := strings.TrimLeft(path, string(os.PathSeparator))
 	base := filepath.Join(s.root, trimmed)

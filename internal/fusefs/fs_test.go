@@ -1,19 +1,16 @@
 package fusefs
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"bazil.org/fuse"
-	"github.com/hashicorp/raft"
 
 	"dfs"
 	"dfs/internal/metastore"
 	"dfs/internal/node"
-	"dfs/internal/store"
 )
 
 const (
@@ -27,12 +24,10 @@ const (
 func TestFSEnsureAndNodes(t *testing.T) {
 	dir := t.TempDir()
 	fs := New(dir)
-	meta := metastore.New()
-	st := store.New()
-	nd := &node.Node{Store: st, Meta: meta}
+	nd := node.NewInmem()
 	dfs.SetNode(nd)
 
-	meta.Sync(&metastore.Entry{Path: cacheFile, Version: 1})
+	nd.Meta.Sync(&metastore.Entry{Path: cacheFile, Version: 1})
 	fs.mu.Lock()
 	fs.mem[cacheFile] = cacheEntry{data: []byte(dataValue), version: 1}
 	fs.mu.Unlock()
@@ -53,10 +48,10 @@ func TestFSEnsureAndNodes(t *testing.T) {
 		t.Fatalf("disk ensure: %v v=%q", err, v)
 	}
 
-	cmd := store.Command{Op: store.OpPut, Key: store.S2B(dfsFile), Data: []byte(dataValue)}
-	b, _ := json.Marshal(cmd)
-	st.Apply(&raft.Log{Data: b})
-	meta.Sync(&metastore.Entry{Path: dfsFile, Version: 1})
+	if err := nd.Put(dfsFile, []byte(dataValue)); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	nd.Meta.Sync(&metastore.Entry{Path: dfsFile, Version: 1})
 	if v, err := fs.ensure(dfsFile); err != nil || string(v) != dataValue {
 		t.Fatalf("dfs ensure: %v v=%q", err, v)
 	}
@@ -100,24 +95,21 @@ func TestFSEnsureAndNodes(t *testing.T) {
 func TestEnsureVersionInvalidates(t *testing.T) {
 	dir := t.TempDir()
 	fs := New(dir)
-	meta := metastore.New()
-	st := store.New()
-	nd := &node.Node{Store: st, Meta: meta}
+	nd := node.NewInmem()
 	dfs.SetNode(nd)
-
-	cmd1 := store.Command{Op: store.OpPut, Key: store.S2B(dfsFile), Data: []byte("v1")}
-	b1, _ := json.Marshal(cmd1)
-	st.Apply(&raft.Log{Data: b1})
-	meta.Sync(&metastore.Entry{Path: dfsFile, Version: 1})
+	if err := nd.Put(dfsFile, []byte("v1")); err != nil {
+		t.Fatalf("put1: %v", err)
+	}
+	nd.Meta.Sync(&metastore.Entry{Path: dfsFile, Version: 1})
 	if v, err := fs.ensure(dfsFile); err != nil || string(v) != "v1" {
 		t.Fatalf("first ensure: %v v=%q", err, v)
 	}
 	time.Sleep(time.Duration(waitMS) * time.Millisecond)
 
-	cmd2 := store.Command{Op: store.OpPut, Key: store.S2B(dfsFile), Data: []byte("v2")}
-	b2, _ := json.Marshal(cmd2)
-	st.Apply(&raft.Log{Data: b2})
-	meta.Sync(&metastore.Entry{Path: dfsFile, Version: 2})
+	if err := nd.Put(dfsFile, []byte("v2")); err != nil {
+		t.Fatalf("put2: %v", err)
+	}
+	nd.Meta.Sync(&metastore.Entry{Path: dfsFile, Version: 2})
 	if v, err := fs.ensure(dfsFile); err != nil || string(v) != "v2" {
 		t.Fatalf("second ensure: %v v=%q", err, v)
 	}

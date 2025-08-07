@@ -3,7 +3,6 @@ package fusefs
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,12 +10,10 @@ import (
 	"testing"
 
 	"bazil.org/fuse"
-	"github.com/hashicorp/raft"
 
 	"dfs"
 	"dfs/internal/metastore"
 	"dfs/internal/node"
-	"dfs/internal/store"
 )
 
 const (
@@ -27,14 +24,11 @@ const (
 )
 
 func prepNode() {
-	st := store.New()
-	cmd := store.Command{Op: store.OpPut, Key: store.S2B(fileName), Data: []byte(newData)}
-	b, _ := json.Marshal(cmd)
-	st.Apply(&raft.Log{Data: b})
-	meta := metastore.New()
+	nd := node.NewInmem()
+	nd.Put(fileName, []byte(newData))
 	hash := sha256.Sum256([]byte(newData))
-	meta.Sync(&metastore.Entry{Path: fileName, Version: verNew, Hash: hash})
-	dfs.SetNode(&node.Node{Store: st, Meta: meta})
+	nd.Meta.Sync(&metastore.Entry{Path: fileName, Version: verNew, Hash: hash})
+	dfs.SetNode(nd)
 }
 
 func TestScanUpdates(t *testing.T) {
@@ -58,8 +52,8 @@ func TestScanUpdates(t *testing.T) {
 }
 
 func TestScanDeletes(t *testing.T) {
-	meta := metastore.New()
-	dfs.SetNode(&node.Node{Store: store.New(), Meta: meta})
+	nd := node.NewInmem()
+	dfs.SetNode(nd)
 	dir := t.TempDir()
 	f := filepath.Join(dir, fileName)
 	if err := os.WriteFile(f, []byte(oldData), 0o644); err != nil {

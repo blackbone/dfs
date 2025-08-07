@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 
 	"dfs/internal/metastore"
-	"dfs/internal/store"
 )
 
 const (
@@ -25,9 +26,9 @@ const (
 
 // Node wraps a Raft instance and its finite state machine store.
 type Node struct {
-	raft  *raft.Raft
-	Store *store.Store
-	Meta  *metastore.Store
+	raft *raft.Raft
+	fsm  *fsm
+	Meta *metastore.Store
 }
 
 // New creates a new Raft node bound to the given address. The peers
@@ -53,17 +54,22 @@ func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	logStore := raft.NewInmemStore()
-	stableStore := raft.NewInmemStore()
-	fsm := store.New()
+	logDB, err := raftboltdb.NewBoltStore(filepath.Join(dataDir, "raft-log.db"))
+	if err != nil {
+		return nil, err
+	}
+	stableDB, err := raftboltdb.NewBoltStore(filepath.Join(dataDir, "raft-stable.db"))
+	if err != nil {
+		return nil, err
+	}
 	meta := metastore.New()
-	// Create the Raft system with our in-memory log and stable stores.
-	r, err := raft.NewRaft(cfg, fsm, logStore, stableStore, snap, transport)
+	fsm := newFSM(meta)
+	r, err := raft.NewRaft(cfg, fsm, logDB, stableDB, snap, transport)
 	if err != nil {
 		return nil, err
 	}
 
-	n := &Node{raft: r, Store: fsm, Meta: meta}
+	n := &Node{raft: r, fsm: fsm, Meta: meta}
 
 	if bootstrap {
 		configuration := raft.Configuration{}
@@ -83,9 +89,21 @@ func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	return n, nil
 }
 
+// NewInmem returns a Node backed by in-memory state without Raft.
+func NewInmem() *Node {
+	meta := metastore.New()
+	return &Node{fsm: newFSM(meta), Meta: meta}
+}
+
 // Put replicates a key/value pair through Raft.
 func (n *Node) Put(key string, data []byte) error {
-	c := &store.Command{Op: store.OpPut, Key: store.S2B(key), Data: data}
+	if n.raft == nil {
+		n.fsm.mu.Lock()
+		n.fsm.data[key] = append([]byte(nil), data...)
+		n.fsm.mu.Unlock()
+		return nil
+	}
+	c := &command{Op: opPut, Key: []byte(key), Data: data}
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err
@@ -96,18 +114,49 @@ func (n *Node) Put(key string, data []byte) error {
 
 // Get returns value if present.
 func (n *Node) Get(key string) ([]byte, bool) {
-	return n.Store.Get(key)
+	return n.fsm.Get(key)
 }
 
 // Delete removes key through Raft.
 func (n *Node) Delete(key string) error {
-	c := &store.Command{Op: store.OpDelete, Key: store.S2B(key)}
+	if n.raft == nil {
+		n.fsm.mu.Lock()
+		delete(n.fsm.data, key)
+		n.fsm.mu.Unlock()
+		return nil
+	}
+	c := &command{Op: opDelete, Key: []byte(key)}
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
 	f := n.raft.Apply(b, applyTimeout)
 	return f.Error()
+}
+
+// SyncMeta replicates metadata entry through Raft.
+func (n *Node) SyncMeta(e *metastore.Entry) error {
+	if n.raft == nil {
+		n.Meta.Sync(e)
+		return nil
+	}
+	c := &command{Op: opMeta, Meta: *e}
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	f := n.raft.Apply(b, applyTimeout)
+	return f.Error()
+}
+
+// StartGC runs periodic garbage collection for metadata and blobs.
+func (n *Node) StartGC(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		for range ticker.C {
+			n.Meta.GC()
+		}
+	}()
 }
 
 // IsLeader reports whether this node is the cluster leader.
