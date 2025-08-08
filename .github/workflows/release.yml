@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+      - run: go test ./...
+
+  build:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            arch: amd64
+            runner: ubuntu-latest
+            cgo: 0
+          - goos: linux
+            arch: arm64
+            runner: ubuntu-latest
+            cgo: 0
+          - goos: darwin
+            arch: amd64
+            runner: macos-latest
+            cgo: 1
+          - goos: darwin
+            arch: arm64
+            runner: macos-latest
+            cgo: 1
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+      - name: Build binaries
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+        run: |
+          for CMD in dfs dfsctl; do
+            go build -o "${CMD}-${GOOS}-${GOARCH}" "./cmd/${CMD}"
+            tar -czf "${CMD}-${GOOS}-${GOARCH}.tar.gz" "${CMD}-${GOOS}-${GOARCH}"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.goos }}-${{ matrix.arch }}"
+          path: |
+            dfs-${{ matrix.goos }}-${{ matrix.arch }}.tar.gz
+            dfsctl-${{ matrix.goos }}-${{ matrix.arch }}.tar.gz
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Compute release info
+        id: vars
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
+          NEXT_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
+          NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:'- %s')
+          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
+          echo "release_notes<<'EOF'" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Push tag
+        run: |
+          git tag "${{ steps.vars.outputs.next_tag }}"
+          git push origin "${{ steps.vars.outputs.next_tag }}"
+      - name: Publish release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.vars.outputs.next_tag }}
+          name: ${{ steps.vars.outputs.next_tag }}
+          body: ${{ steps.vars.outputs.release_notes }}
+          files: dist/**/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
