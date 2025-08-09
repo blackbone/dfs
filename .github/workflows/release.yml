@@ -31,14 +31,14 @@ jobs:
             arch: arm64
             runner: ubuntu-latest
             cgo: 0
-          - goos: darwin
-            arch: amd64
-            runner: macos-latest
-            cgo: 1
-          - goos: darwin
-            arch: arm64
-            runner: macos-latest
-            cgo: 1
+          # - goos: darwin
+          #   arch: amd64
+          #   runner: macos-latest
+          #   cgo: 1
+          # - goos: darwin
+          #   arch: arm64
+          #   runner: macos-latest
+          #   cgo: 1
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
