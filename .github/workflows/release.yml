@@ -73,28 +73,44 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: Compute release info
-        id: vars
+      - name: Get last tag
+        id: last
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
-          NEXT_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
-          NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:'- %s')
-          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
-          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
-          echo "release_notes<<'EOF'" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Compute next tag
+        id: next
+        run: |
+          LAST_TAG="${{ steps.last.outputs.tag }}"
+          if [ -z "$LAST_TAG" ]; then
+            NEXT_TAG="v0.0.1"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
+            NEXT_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
+          fi
+          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+      - name: Gather release notes
+        id: notes
+        run: |
+          LAST_TAG="${{ steps.last.outputs.tag }}"
+          if [ -z "$LAST_TAG" ]; then
+            NOTES=$(git log --pretty=format:'- %s')
+          else
+            NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:'- %s')
+          fi
+          echo "log<<'EOF'" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
       - name: Push tag
         run: |
-          git tag "${{ steps.vars.outputs.next_tag }}"
-          git push origin "${{ steps.vars.outputs.next_tag }}"
+          git tag "${{ steps.next.outputs.tag }}"
+          git push origin "${{ steps.next.outputs.tag }}"
       - name: Publish release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.vars.outputs.next_tag }}
-          name: ${{ steps.vars.outputs.next_tag }}
-          body: ${{ steps.vars.outputs.release_notes }}
+          tag_name: ${{ steps.next.outputs.tag }}
+          name: ${{ steps.next.outputs.tag }}
+          body: ${{ steps.notes.outputs.log }}
           files: dist/**/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
