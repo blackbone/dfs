@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.3'
@@ -66,35 +68,33 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      INITIAL_TAG: v0.0.1
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: Compute release info
-        id: vars
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
-          NEXT_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
-          NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:'- %s')
-          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
-          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
-          echo "release_notes<<'EOF'" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      - name: Push tag
-        run: |
-          git tag "${{ steps.vars.outputs.next_tag }}"
-          git push origin "${{ steps.vars.outputs.next_tag }}"
-      - name: Publish release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.vars.outputs.next_tag }}
-          name: ${{ steps.vars.outputs.next_tag }}
-          body: ${{ steps.vars.outputs.release_notes }}
-          files: dist/**/*.tar.gz
+      - name: Get last tag
+        id: last
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh api "repos/${GITHUB_REPOSITORY}/tags?per_page=1" --jq '.[0].name' 2>/dev/null || echo "")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Compute next tag
+        id: next
+        run: |
+          LAST="${{ steps.last.outputs.tag }}"
+          if [ -z "$LAST" ]; then
+            NEXT="$INITIAL_TAG"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST#v}"
+            NEXT="v${MAJOR}.${MINOR}.$((PATCH+1))"
+          fi
+          echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.next.outputs.tag }}" dist/**/*.tar.gz --generate-notes
