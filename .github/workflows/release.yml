@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.3'
@@ -66,51 +68,33 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      INITIAL_TAG: v0.0.1
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
       - name: Get last tag
         id: last
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          TAG=$(gh api "repos/${GITHUB_REPOSITORY}/tags?per_page=1" --jq '.[0].name' 2>/dev/null || echo "")
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - name: Compute next tag
         id: next
         run: |
-          LAST_TAG="${{ steps.last.outputs.tag }}"
-          if [ -z "$LAST_TAG" ]; then
-            NEXT_TAG="v0.0.1"
+          LAST="${{ steps.last.outputs.tag }}"
+          if [ -z "$LAST" ]; then
+            NEXT="$INITIAL_TAG"
           else
-            IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST_TAG#v}"
-            NEXT_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
+            IFS='.' read -r MAJOR MINOR PATCH <<<"${LAST#v}"
+            NEXT="v${MAJOR}.${MINOR}.$((PATCH+1))"
           fi
-          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
-      - name: Gather release notes
-        id: notes
-        run: |
-          LAST_TAG="${{ steps.last.outputs.tag }}"
-          if [ -z "$LAST_TAG" ]; then
-            NOTES=$(git log --pretty=format:'- %s')
-          else
-            NOTES=$(git log "${LAST_TAG}..HEAD" --pretty=format:'- %s')
-          fi
-          echo "log<<'EOF'" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-      - name: Push tag
-        run: |
-          git tag "${{ steps.next.outputs.tag }}"
-          git push origin "${{ steps.next.outputs.tag }}"
+          echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
       - name: Publish release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.next.outputs.tag }}
-          name: ${{ steps.next.outputs.tag }}
-          body: ${{ steps.notes.outputs.log }}
-          files: dist/**/*.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.next.outputs.tag }}" dist/**/*.tar.gz --generate-notes
