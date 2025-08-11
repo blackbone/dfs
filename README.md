@@ -14,10 +14,9 @@ go build ./cmd/dfs
 
 ## Running
 
-Each process hosts a single node. Configuration is read from a file named
-`dfs.yaml` in the working directory or from environment variables prefixed
-with `DFS_`. Raft traffic defaults to port `12000` and the gRPC API to
-`13000`.
+Each process hosts a single node. Configuration is supplied through
+environment variables prefixed with `DFS_`. Raft traffic defaults to port
+`12000` and the gRPC API to `13000`.
 
 ```sh
 # start first node
