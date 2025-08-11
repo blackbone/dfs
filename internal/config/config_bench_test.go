@@ -1,21 +1,23 @@
 package config
 
-import (
-	"os"
-	"path/filepath"
-	"testing"
+import "testing"
+
+const (
+	benchID    = "bench"
+	benchRaft  = "a"
+	benchGRPC  = "b"
+	benchData  = "/tmp"
+	benchPeers = "x,y"
 )
 
-const benchYAML = "id: bench\nraft: a\ngrpc: b\ndata: /tmp\npeers:\n  - x\n  - y\n"
-
 func BenchmarkLoad(b *testing.B) {
-	dir := b.TempDir()
-	file := filepath.Join(dir, "cfg.yaml")
-	if err := os.WriteFile(file, []byte(benchYAML), 0o600); err != nil {
-		b.Fatalf("write: %v", err)
-	}
+	b.Setenv(EnvID, benchID)
+	b.Setenv(EnvRaft, benchRaft)
+	b.Setenv(EnvGRPC, benchGRPC)
+	b.Setenv(EnvData, benchData)
+	b.Setenv(EnvPeers, benchPeers)
 	for i := 0; i < b.N; i++ {
-		if _, err := Load(file); err != nil {
+		if _, err := Load(); err != nil {
 			b.Fatalf("load: %v", err)
 		}
 	}

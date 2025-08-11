@@ -37,7 +37,7 @@ func main() {
 		checkInterval   = time.Minute
 	)
 
-	cfg, err := config.Load("")
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}

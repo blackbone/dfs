@@ -1,77 +1,66 @@
 package config
 
 import (
-	"errors"
 	"os"
-
-	"github.com/spf13/viper"
+	"strconv"
+	"strings"
 )
 
 const (
-	KeyID    = "id"
-	KeyRaft  = "raft"
-	KeyGRPC  = "grpc"
-	KeyData  = "data"
-	KeyPeers = "peers"
-	KeyJoin  = "join"
+	EnvID    = "DFS_ID"
+	EnvRaft  = "DFS_RAFT"
+	EnvGRPC  = "DFS_GRPC"
+	EnvData  = "DFS_DATA"
+	EnvPeers = "DFS_PEERS"
+	EnvJoin  = "DFS_JOIN"
 
-	EnvPrefix = "DFS"
-	EnvConfig = "DFS_CONFIG"
-	EnvID     = "DFS_ID"
-	EnvRaft   = "DFS_RAFT"
-	EnvGRPC   = "DFS_GRPC"
-	EnvData   = "DFS_DATA"
-	EnvPeers  = "DFS_PEERS"
-	EnvJoin   = "DFS_JOIN"
+	DefaultID      = "node1"
+	DefaultDataDir = "data"
 
-	DefaultID         = "node1"
-	DefaultDataDir    = "data"
-	DefaultConfigName = "dfs"
-	ConfigDir         = "."
+	commaSep = ','
 )
 
 type Config struct {
-	ID    string   `mapstructure:"id"`
-	Raft  string   `mapstructure:"raft"`
-	GRPC  string   `mapstructure:"grpc"`
-	Data  string   `mapstructure:"data"`
-	Peers []string `mapstructure:"peers"`
-	Join  bool     `mapstructure:"join"`
+	ID    string
+	Raft  string
+	GRPC  string
+	Data  string
+	Peers []string
+	Join  bool
 }
 
-func Load(path string) (Config, error) {
-	var cfg Config
-	v := viper.New()
+// Load reads configuration from environment variables.
+func Load() (Config, error) {
+	cfg := Config{ID: DefaultID, Data: DefaultDataDir}
 
-	v.SetDefault(KeyID, DefaultID)
-	v.SetDefault(KeyData, DefaultDataDir)
-	v.SetDefault(KeyJoin, false)
-
-	v.SetEnvPrefix(EnvPrefix)
-	v.AutomaticEnv()
-
-	if path == "" {
-		if envPath, ok := os.LookupEnv(EnvConfig); ok {
-			path = envPath
+	if v, ok := os.LookupEnv(EnvID); ok && v != "" {
+		cfg.ID = v
+	}
+	if v, ok := os.LookupEnv(EnvRaft); ok && v != "" {
+		cfg.Raft = v
+	}
+	if v, ok := os.LookupEnv(EnvGRPC); ok && v != "" {
+		cfg.GRPC = v
+	}
+	if v, ok := os.LookupEnv(EnvData); ok && v != "" {
+		cfg.Data = v
+	}
+	if v, ok := os.LookupEnv(EnvPeers); ok {
+		if v != "" {
+			cfg.Peers = strings.Split(v, string(commaSep))
+		} else {
+			cfg.Peers = nil
+		}
+	}
+	if v, ok := os.LookupEnv(EnvJoin); ok {
+		if v != "" {
+			b, err := strconv.ParseBool(v)
+			if err != nil {
+				return cfg, err
+			}
+			cfg.Join = b
 		}
 	}
 
-	if path != "" {
-		v.SetConfigFile(path)
-	} else {
-		v.SetConfigName(DefaultConfigName)
-		v.AddConfigPath(ConfigDir)
-	}
-
-	if err := v.ReadInConfig(); err != nil {
-		var nf viper.ConfigFileNotFoundError
-		if !(errors.As(err, &nf) || errors.Is(err, os.ErrNotExist)) {
-			return cfg, err
-		}
-	}
-
-	if err := v.Unmarshal(&cfg); err != nil {
-		return cfg, err
-	}
 	return cfg, nil
 }
