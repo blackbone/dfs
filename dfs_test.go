@@ -19,11 +19,13 @@ const (
 	sampleID    = "id"
 	sampleKey   = "k"
 	sampleVal   = "v"
+	sampleVal2  = "v2"
 	missingKey  = "m"
 	waitSeconds = 5
 	sleepMillis = 10
 
 	invalidPath = "../bad"
+	dotPath     = "."
 	emptyKey    = "zero"
 	largeKey    = "dir/sub/large"
 	bigFileSize = 1 << 20
@@ -60,6 +62,18 @@ func TestGetFileNoNode(t *testing.T) {
 
 func TestPutFileNoNode(t *testing.T) {
 	if err := PutFile(sampleKey, []byte(sampleVal)); !errors.Is(err, errNodeNotInitialized) {
+		t.Fatalf("expected node not initialized error, got %v", err)
+	}
+}
+
+func TestDeleteFileNoNode(t *testing.T) {
+	if err := DeleteFile(sampleKey); !errors.Is(err, errNodeNotInitialized) {
+		t.Fatalf("expected node not initialized error, got %v", err)
+	}
+}
+
+func TestGetMetadataNoNode(t *testing.T) {
+	if _, err := GetMetadata(sampleKey); !errors.Is(err, errNodeNotInitialized) {
 		t.Fatalf("expected node not initialized error, got %v", err)
 	}
 }
@@ -106,14 +120,65 @@ func TestDeleteFile(t *testing.T) {
 	}
 }
 
+func TestDeleteFileMissing(t *testing.T) {
+	addr := freePort(t)
+	n, err := node.New(sampleID, addr, t.TempDir(), emptyString, true)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	SetNode(n)
+	t.Cleanup(func() { SetNode(nil) })
+	waitLeader(t, n)
+	if err := DeleteFile(missingKey); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := GetFile(missingKey); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected not exist, got %v", err)
+	}
+	if _, err := GetMetadata(missingKey); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected meta missing, got %v", err)
+	}
+}
+
+func TestPutFileVersion(t *testing.T) {
+	addr := freePort(t)
+	n, err := node.New(sampleID, addr, t.TempDir(), emptyString, true)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	SetNode(n)
+	t.Cleanup(func() { SetNode(nil) })
+	waitLeader(t, n)
+	if err := PutFile(sampleKey, []byte(sampleVal)); err != nil {
+		t.Fatalf("put1: %v", err)
+	}
+	if err := PutFile(sampleKey, []byte(sampleVal2)); err != nil {
+		t.Fatalf("put2: %v", err)
+	}
+	meta, err := GetMetadata(sampleKey)
+	if err != nil {
+		t.Fatalf("meta: %v", err)
+	}
+	wantHash := sha256.Sum256([]byte(sampleVal2))
+	if meta.Version != 2 || meta.Hash != wantHash {
+		t.Fatalf("unexpected meta: %+v", meta)
+	}
+}
+
 func TestInvalidPaths(t *testing.T) {
 	SetNode(nil)
-	invalids := []string{invalidPath, emptyString}
+	invalids := []string{invalidPath, emptyString, dotPath}
 	for _, p := range invalids {
 		if err := PutFile(p, []byte(sampleVal)); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("expected not exist for %q, got %v", p, err)
 		}
 		if _, err := GetFile(p); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("expected not exist for %q, got %v", p, err)
+		}
+		if err := DeleteFile(p); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("expected not exist for %q, got %v", p, err)
+		}
+		if _, err := GetMetadata(p); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("expected not exist for %q, got %v", p, err)
 		}
 	}
