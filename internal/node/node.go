@@ -39,17 +39,27 @@ type Node struct {
 func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	cfg := raft.DefaultConfig()
 	cfg.LocalID = raft.ServerID(id)
-
 	addr, err := net.ResolveTCPAddr(networkTCP, bind)
 	if err != nil {
 		return nil, err
 	}
-	// Each node communicates with others over a TCP transport.
 	transport, err := raft.NewTCPTransport(bind, addr, maxPool, dialTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
+	return newWithTransport(cfg, dataDir, peers, bootstrap, transport)
+}
 
+// NewWithListener creates a new Raft node using an existing listener for all
+// incoming connections.
+func NewWithListener(id string, ln net.Listener, dataDir, peers string, bootstrap bool) (*Node, error) {
+	cfg := raft.DefaultConfig()
+	cfg.LocalID = raft.ServerID(id)
+	transport := raft.NewNetworkTransport(&streamLayer{ln}, maxPool, dialTimeout, os.Stderr)
+	return newWithTransport(cfg, dataDir, peers, bootstrap, transport)
+}
+
+func newWithTransport(cfg *raft.Config, dataDir, peers string, bootstrap bool, transport raft.Transport) (*Node, error) {
 	snap, err := raft.NewFileSnapshotStore(dataDir, 1, os.Stderr)
 	if err != nil {
 		return nil, err
@@ -68,24 +78,18 @@ func New(id, bind, dataDir, peers string, bootstrap bool) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	n := &Node{raft: r, fsm: fsm, Meta: meta}
-
 	if bootstrap {
 		configuration := raft.Configuration{}
 		for _, p := range strings.Split(peers, sepComma) {
 			if p == emptyString {
 				continue
 			}
-			configuration.Servers = append(configuration.Servers, raft.Server{
-				ID:      raft.ServerID(p),
-				Address: raft.ServerAddress(p),
-			})
+			configuration.Servers = append(configuration.Servers, raft.Server{ID: raft.ServerID(p), Address: raft.ServerAddress(p)})
 		}
 		configuration.Servers = append(configuration.Servers, raft.Server{ID: cfg.LocalID, Address: transport.LocalAddr()})
 		r.BootstrapCluster(configuration)
 	}
-
 	return n, nil
 }
 

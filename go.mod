@@ -9,6 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/hashicorp/raft v1.6.0
 	github.com/hashicorp/raft-boltdb/v2 v2.3.1
+	github.com/soheilhy/cmux v0.1.5
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
