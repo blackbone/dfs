@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -19,22 +20,29 @@ const (
 	benchKeyFmt = "bench-%d"
 	benchData   = "data"
 	benchSleep  = 200 * time.Millisecond
+	listenNet   = "tcp"
 )
 
-// startNode creates a node and gRPC server listening on the given addresses.
-func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
+// startNode creates a node and gRPC server listening on a single address.
+func startNode(tb testing.TB, id, addr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
 	tb.Helper()
-	n, err := node.New(id, raftAddr, dataDir, peers, bootstrap)
+	lis, err := net.Listen(listenNet, addr)
 	if err != nil {
 		return nil, nil, err
 	}
-	lis, err := net.Listen("tcp", grpcAddr)
+	mux := cmux.New(lis)
+	grpcL := mux.Match(cmux.HTTP2())
+	raftL := mux.Match(cmux.Any())
+
+	n, err := node.NewWithListener(id, raftL, dataDir, peers, bootstrap)
 	if err != nil {
+		lis.Close()
 		return nil, nil, err
 	}
 	s := grpc.NewServer()
 	pb.RegisterFileServiceServer(s, server.New(n))
-	go s.Serve(lis)
+	go s.Serve(grpcL)
+	go mux.Serve()
 	cleanup := func() {
 		s.Stop()
 		lis.Close()
@@ -47,12 +55,12 @@ func BenchmarkTwoNodes(b *testing.B) {
 	dir1 := b.TempDir()
 	dir2 := b.TempDir()
 
-	_, stop1, err := startNode(b, "127.0.0.1:12000", "127.0.0.1:12000", "127.0.0.1:13000", "127.0.0.1:12001", dir1, true)
+	_, stop1, err := startNode(b, "127.0.0.1:13000", "127.0.0.1:13000", "127.0.0.1:13001", dir1, true)
 	if err != nil {
 		b.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(b, "127.0.0.1:12001", "127.0.0.1:12001", "127.0.0.1:13001", "127.0.0.1:12000", dir2, true)
+	n2, stop2, err := startNode(b, "127.0.0.1:13001", "127.0.0.1:13001", "127.0.0.1:13000", dir2, true)
 	if err != nil {
 		b.Fatalf("node2: %v", err)
 	}
@@ -105,17 +113,17 @@ func BenchmarkThreeNodes(b *testing.B) {
 	dir2 := b.TempDir()
 	dir3 := b.TempDir()
 
-	_, stop1, err := startNode(b, "127.0.0.1:12010", "127.0.0.1:12010", "127.0.0.1:13010", "127.0.0.1:12011,127.0.0.1:12012", dir1, true)
+	_, stop1, err := startNode(b, "127.0.0.1:13010", "127.0.0.1:13010", "127.0.0.1:13011,127.0.0.1:13012", dir1, true)
 	if err != nil {
 		b.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(b, "127.0.0.1:12011", "127.0.0.1:12011", "127.0.0.1:13011", "127.0.0.1:12010,127.0.0.1:12012", dir2, true)
+	n2, stop2, err := startNode(b, "127.0.0.1:13011", "127.0.0.1:13011", "127.0.0.1:13010,127.0.0.1:13012", dir2, true)
 	if err != nil {
 		b.Fatalf("node2: %v", err)
 	}
 	defer stop2()
-	n3, stop3, err := startNode(b, "127.0.0.1:12012", "127.0.0.1:12012", "127.0.0.1:13012", "127.0.0.1:12010,127.0.0.1:12011", dir3, true)
+	n3, stop3, err := startNode(b, "127.0.0.1:13012", "127.0.0.1:13012", "127.0.0.1:13010,127.0.0.1:13011", dir3, true)
 	if err != nil {
 		b.Fatalf("node3: %v", err)
 	}

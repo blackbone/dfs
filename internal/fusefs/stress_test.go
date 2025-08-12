@@ -19,9 +19,8 @@ import (
 
 const (
 	hostAddr           = "127.0.0.1"
-	baseRaftPort       = 12200
-	baseGRPCPort       = 13200
-	raftAddrFmt        = "%s:%d"
+	basePort           = 13200
+	addrFmt            = "%s:%d"
 	filePrefix         = "stress"
 	fileExt            = ".bin"
 	electionWait       = 2 * time.Second
@@ -40,8 +39,7 @@ func startCluster(t *testing.T, n int, offset int) ([]*node.Node, []string, []fu
 	cacheDirs := make([]string, 0, n)
 	stops := make([]func(), 0, n)
 	for i := 0; i < n; i++ {
-		raftAddr := fmt.Sprintf(raftAddrFmt, hostAddr, baseRaftPort+offset+i)
-		grpcAddr := fmt.Sprintf(raftAddrFmt, hostAddr, baseGRPCPort+offset+i)
+		addr := fmt.Sprintf(addrFmt, hostAddr, basePort+offset+i)
 		dataDir := t.TempDir()
 		cacheDir := t.TempDir()
 		peerParts := make([]string, 0, n-1)
@@ -49,10 +47,10 @@ func startCluster(t *testing.T, n int, offset int) ([]*node.Node, []string, []fu
 			if j == i {
 				continue
 			}
-			peerParts = append(peerParts, fmt.Sprintf(raftAddrFmt, hostAddr, baseRaftPort+offset+j))
+			peerParts = append(peerParts, fmt.Sprintf(addrFmt, hostAddr, basePort+offset+j))
 		}
 		peers := strings.Join(peerParts, ",")
-		nd, stop, err := startNode(t, raftAddr, raftAddr, grpcAddr, peers, dataDir, true)
+		nd, stop, err := startNode(t, addr, addr, peers, dataDir, true)
 		if err != nil {
 			t.Fatalf("node %d: %v", i, err)
 		}

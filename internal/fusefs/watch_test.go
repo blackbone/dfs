@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 
 	"dfs"
@@ -16,20 +17,27 @@ import (
 	pb "dfs/proto"
 )
 
-// startNode is a helper to create a node and its gRPC server for tests.
-func startNode(tb testing.TB, id, raftAddr, grpcAddr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
+const listenNet = "tcp"
+
+// startNode creates a node and gRPC server using a shared address.
+func startNode(tb testing.TB, id, addr, peers, dataDir string, bootstrap bool) (*node.Node, func(), error) {
 	tb.Helper()
-	n, err := node.New(id, raftAddr, dataDir, peers, bootstrap)
+	lis, err := net.Listen(listenNet, addr)
 	if err != nil {
 		return nil, nil, err
 	}
-	lis, err := net.Listen("tcp", grpcAddr)
+	mux := cmux.New(lis)
+	grpcL := mux.Match(cmux.HTTP2())
+	raftL := mux.Match(cmux.Any())
+	n, err := node.NewWithListener(id, raftL, dataDir, peers, bootstrap)
 	if err != nil {
+		lis.Close()
 		return nil, nil, err
 	}
 	s := grpc.NewServer()
 	pb.RegisterFileServiceServer(s, server.New(n))
-	go s.Serve(lis)
+	go s.Serve(grpcL)
+	go mux.Serve()
 	cleanup := func() {
 		s.Stop()
 		lis.Close()
@@ -41,12 +49,12 @@ func TestWatchReplicatesFile(t *testing.T) {
 	dir1 := t.TempDir()
 	dir2 := t.TempDir()
 
-	n1, stop1, err := startNode(t, "127.0.0.1:12010", "127.0.0.1:12010", "127.0.0.1:13010", "127.0.0.1:12011", dir1, true)
+	n1, stop1, err := startNode(t, "127.0.0.1:13010", "127.0.0.1:13010", "127.0.0.1:13011", dir1, true)
 	if err != nil {
 		t.Fatalf("node1: %v", err)
 	}
 	defer stop1()
-	n2, stop2, err := startNode(t, "127.0.0.1:12011", "127.0.0.1:12011", "127.0.0.1:13011", "127.0.0.1:12010", dir2, true)
+	n2, stop2, err := startNode(t, "127.0.0.1:13011", "127.0.0.1:13011", "127.0.0.1:13010", dir2, true)
 	if err != nil {
 		t.Fatalf("node2: %v", err)
 	}

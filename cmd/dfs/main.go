@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 
 	"dfs"
@@ -30,11 +31,11 @@ func withDefaultPort(addr string, defaultPort int) string {
 
 func main() {
 	const (
-		defaultRaftPort = 12000
-		defaultGRPCPort = 13000
-		mountPoint      = "/mnt/dfs"
-		cacheDir        = "/mnt/hostfs"
-		checkInterval   = time.Minute
+		defaultPort   = 13000
+		listenNet     = "tcp"
+		mountPoint    = "/mnt/dfs"
+		cacheDir      = "/mnt/hostfs"
+		checkInterval = time.Minute
 	)
 
 	cfg, err := config.Load()
@@ -42,18 +43,28 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	rAddr := withDefaultPort(cfg.Raft, defaultRaftPort)
-	gAddr := withDefaultPort(cfg.GRPC, defaultGRPCPort)
+	addr := withDefaultPort(cfg.GRPC, defaultPort)
+	if cfg.Raft != "" {
+		addr = withDefaultPort(cfg.Raft, defaultPort)
+	}
 	peerStr := ""
 	if len(cfg.Peers) > 0 {
 		var ps []string
 		for _, p := range cfg.Peers {
-			ps = append(ps, withDefaultPort(p, defaultRaftPort))
+			ps = append(ps, withDefaultPort(p, defaultPort))
 		}
 		peerStr = strings.Join(ps, ",")
 	}
 
-	n, err := node.New(cfg.ID, rAddr, cfg.Data, peerStr, !cfg.Join)
+	lis, err := net.Listen(listenNet, addr)
+	if err != nil {
+		log.Fatalf("listen: %v", err)
+	}
+	mux := cmux.New(lis)
+	grpcL := mux.Match(cmux.HTTP2())
+	raftL := mux.Match(cmux.Any())
+
+	n, err := node.NewWithListener(cfg.ID, raftL, cfg.Data, peerStr, !cfg.Join)
 	if err != nil {
 		log.Fatalf("node: %v", err)
 	}
@@ -72,14 +83,15 @@ func main() {
 	}()
 	go dfsfs.Check(context.Background(), cacheDir, checkInterval)
 
-	lis, err := net.Listen("tcp", gAddr)
-	if err != nil {
-		log.Fatalf("listen: %v", err)
-	}
 	s := grpc.NewServer()
 	pb.RegisterFileServiceServer(s, server.New(n))
-	log.Printf("gRPC listening on %s", gAddr)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
+	go func() {
+		log.Printf("gRPC listening on %s", addr)
+		if err := s.Serve(grpcL); err != nil {
+			log.Fatalf("grpc: %v", err)
+		}
+	}()
+	if err := mux.Serve(); err != nil {
+		log.Fatalf("mux: %v", err)
 	}
 }
